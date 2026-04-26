@@ -1,4 +1,4 @@
-import { Switch, Route, Router } from "wouter";
+import { Switch, Route, Router, Redirect } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -33,6 +33,7 @@ import RegisterPage from "@/pages/register";
 import SubscriptionSuccess from "@/pages/subscription-success";
 import NotFound from "@/pages/not-found";
 import { useAuth } from "@/hooks/use-auth";
+import LandingPage from "@/pages/landing";
 
 function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
@@ -52,7 +53,7 @@ const LANGUAGES = [
 function LanguageSelector() {
   const { i18n } = useTranslation();
   const { user } = useAuth();
-  
+
   useEffect(() => {
     if (user?.preferredLanguage && user.preferredLanguage !== i18n.language) {
       i18n.changeLanguage(user.preferredLanguage);
@@ -97,9 +98,32 @@ function LanguageSelector() {
 }
 
 function AppRouter() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <Switch>
-      <Route path="/" component={() => <ProtectedRoute component={Dashboard} />} />
+      {/* Default route: landing for public, dashboard for authenticated */}
+      <Route path="/">
+        {isAuthenticated ? <Redirect to="/dashboard" /> : <LandingPage />}
+      </Route>
+
+      {/* Public routes */}
+      <Route path="/landing" component={LandingPage} />
+      <Route path="/login" component={LoginPage} />
+      <Route path="/register" component={RegisterPage} />
+      <Route path="/pricing" component={PricingPage} />
+
+      {/* Protected routes - redirect to login if not authenticated */}
+      <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/sites" component={() => <ProtectedRoute component={SitesPage} />} />
       <Route path="/attendance" component={() => <ProtectedRoute component={AttendancePage} />} />
       <Route path="/dpr" component={() => <ProtectedRoute component={DprPage} />} />
@@ -107,11 +131,11 @@ function AppRouter() {
       <Route path="/users" component={() => <ProtectedRoute component={UsersPage} />} />
       <Route path="/reports" component={() => <ProtectedRoute component={ReportsPage} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={ProfilePage} />} />
-      <Route path="/pricing" component={() => <ProtectedRoute component={PricingPage} />} />
       <Route path="/workers" component={() => <ProtectedRoute component={WorkersPage} />} />
       <Route path="/contractors" component={() => <ProtectedRoute component={ContractorsPage} />} />
       <Route path="/payroll" component={() => <ProtectedRoute component={PayrollPage} />} />
       <Route path="/subscription/success" component={() => <ProtectedRoute component={SubscriptionSuccess} />} />
+
       <Route component={NotFound} />
     </Switch>
   );
@@ -122,35 +146,42 @@ function AppLayout() {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
   };
+  const { isAuthenticated } = useAuth();
 
   return (
     <Router hook={useHashLocation}>
       <Switch>
-        {/* Public routes — no sidebar */}
-        <Route path="/login" component={LoginPage} />
-        <Route path="/register" component={RegisterPage} />
-        <Route path="/pricing" component={PricingPage} />
+        {/* Public routes — no sidebar (landing, login, register, pricing) */}
+        <Route path="/landing">{() => <LandingPage />}</Route>
+        <Route path="/login">{() => <LoginPage />}</Route>
+        <Route path="/register">{() => <RegisterPage />}</Route>
+        <Route path="/pricing">{() => <PricingPage />}</Route>
 
         {/* All other routes use the sidebar layout */}
         <Route>
-          <SidebarProvider style={sidebarStyle as React.CSSProperties}>
-            <div className="flex h-screen w-full">
-              <AppSidebar />
-              <div className="flex flex-col flex-1 min-w-0">
-                <TrialBanner />
-                <header className="flex items-center justify-between gap-2 px-4 py-2 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
-                  <SidebarTrigger data-testid="button-sidebar-toggle" />
-                  <div className="flex items-center gap-2">
-                    <LanguageSelector />
-                    <ThemeToggle />
-                  </div>
-                </header>
-                <main className="flex-1 overflow-y-auto">
-                  <AppRouter />
-                </main>
+          {isAuthenticated ? (
+            <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <AppSidebar />
+                <div className="flex flex-col flex-1 min-w-0">
+                  <TrialBanner />
+                  <header className="flex items-center justify-between gap-2 px-4 py-2 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
+                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <div className="flex items-center gap-2">
+                      <LanguageSelector />
+                      <ThemeToggle />
+                    </div>
+                  </header>
+                  <main className="flex-1 overflow-y-auto">
+                    <AppRouter />
+                  </main>
+                </div>
               </div>
-            </div>
-          </SidebarProvider>
+            </SidebarProvider>
+          ) : (
+            /* Not authenticated - show landing page */
+            <LandingPage />
+          )}
         </Route>
       </Switch>
     </Router>
