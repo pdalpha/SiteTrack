@@ -1,0 +1,48 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "sites": "Sites",
+    "workers": "Workers",
+    "contractors": "Contractors",
+    "attendance": "Attendance",
+    "dailyReport": "Daily Report",
+    "expenses": "Expenses",
+    "payroll": "Payroll",
+    "reports": "Reports",
+    "users": "Users",
+    "pricing": "Pricing",
+    "profile": "Profile",
+    "logout": "Log out"
+  },
+  "common": {
+    "add": "Add",
+    "edit": "Edit",
+    "save": "Save Changes",
+    "cancel": "Cancel",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "all": "All",
+    "search": "Search...",
+    "none": "None",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "dashboard": {
+    "overview": "Overview of your construction sites",
+    "allSites": "All Sites",
+    "activeSites": "Active Sites",
+    "presentToday": "Present Today",
+    "todayExpenses": "Today's Expenses",
+    "pendingDprs": "Pending DPRs",
+    "totalWorkers": "Total Workers",
+    "monthlyPayroll": "Monthly Payroll",
+    "todaysAttendance": "Today's Attendance",
+    "noAttendance": "No attendance data for today",
+    "expensesByCategory": "Monthly Expenses by Category",
+    "noExpense": "No expense data for this month"
+  },
+  "workers": {
+    "registered": "workers registered"
+  }
+}

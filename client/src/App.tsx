@@ -1,0 +1,167 @@
+import { Switch, Route, Router } from "wouter";
+import { useHashLocation } from "wouter/use-hash-location";
+import { queryClient } from "./lib/queryClient";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+import { ThemeProvider, useTheme } from "@/components/theme-provider";
+import { ProtectedRoute } from "@/components/protected-route";
+import { Button } from "@/components/ui/button";
+import { Sun, Moon, Globe } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { useEffect } from "react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { apiRequest } from "./lib/queryClient";
+import { useMutation } from "@tanstack/react-query";
+import Dashboard from "@/pages/dashboard";
+import SitesPage from "@/pages/sites";
+import AttendancePage from "@/pages/attendance";
+import DprPage from "@/pages/dpr";
+import ExpensesPage from "@/pages/expenses";
+import UsersPage from "@/pages/users";
+import ReportsPage from "@/pages/reports";
+import ProfilePage from "@/pages/profile";
+import PricingPage from "@/pages/pricing";
+import WorkersPage from "@/pages/workers";
+import ContractorsPage from "@/pages/contractors";
+import PayrollPage from "@/pages/payroll";
+import LoginPage from "@/pages/login";
+import NotFound from "@/pages/not-found";
+import { useAuth } from "@/hooks/use-auth";
+
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  return (
+    <Button size="icon" variant="ghost" onClick={toggleTheme} data-testid="button-theme-toggle">
+      {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+    </Button>
+  );
+}
+
+const LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "hi", label: "हिंदी" },
+  { code: "mr", label: "मराठी" },
+];
+
+function LanguageSelector() {
+  const { i18n } = useTranslation();
+  const { user } = useAuth();
+  
+  useEffect(() => {
+    if (user?.preferredLanguage && user.preferredLanguage !== i18n.language) {
+      i18n.changeLanguage(user.preferredLanguage);
+    }
+  }, [user?.preferredLanguage, i18n]);
+
+  const updateLangMutation = useMutation({
+    mutationFn: async (lang: string) => {
+      if (!user) return;
+      await apiRequest(`/api/users/${user.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ preferredLanguage: lang }),
+      });
+    }
+  });
+
+  const changeLanguage = (code: string) => {
+    i18n.changeLanguage(code);
+    updateLangMutation.mutate(code);
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" data-testid="button-language-selector">
+          <Globe className="w-4 h-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {LANGUAGES.map((lang) => (
+          <DropdownMenuItem
+            key={lang.code}
+            onClick={() => changeLanguage(lang.code)}
+            className={i18n.language === lang.code ? "bg-accent font-medium" : ""}
+          >
+            {lang.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function AppRouter() {
+  return (
+    <Switch>
+      <Route path="/" component={() => <ProtectedRoute component={Dashboard} />} />
+      <Route path="/sites" component={() => <ProtectedRoute component={SitesPage} />} />
+      <Route path="/attendance" component={() => <ProtectedRoute component={AttendancePage} />} />
+      <Route path="/dpr" component={() => <ProtectedRoute component={DprPage} />} />
+      <Route path="/expenses" component={() => <ProtectedRoute component={ExpensesPage} />} />
+      <Route path="/users" component={() => <ProtectedRoute component={UsersPage} />} />
+      <Route path="/reports" component={() => <ProtectedRoute component={ReportsPage} />} />
+      <Route path="/profile" component={() => <ProtectedRoute component={ProfilePage} />} />
+      <Route path="/pricing" component={() => <ProtectedRoute component={PricingPage} />} />
+      <Route path="/workers" component={() => <ProtectedRoute component={WorkersPage} />} />
+      <Route path="/contractors" component={() => <ProtectedRoute component={ContractorsPage} />} />
+      <Route path="/payroll" component={() => <ProtectedRoute component={PayrollPage} />} />
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
+
+function AppLayout() {
+  const sidebarStyle = {
+    "--sidebar-width": "16rem",
+    "--sidebar-width-icon": "3rem",
+  };
+
+  return (
+    <Router hook={useHashLocation}>
+      <Switch>
+        {/* Public routes — no sidebar */}
+        <Route path="/login" component={LoginPage} />
+        <Route path="/pricing" component={PricingPage} />
+
+        {/* All other routes use the sidebar layout */}
+        <Route>
+          <SidebarProvider style={sidebarStyle as React.CSSProperties}>
+            <div className="flex h-screen w-full">
+              <AppSidebar />
+              <div className="flex flex-col flex-1 min-w-0">
+                <header className="flex items-center justify-between gap-2 px-4 py-2 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
+                  <SidebarTrigger data-testid="button-sidebar-toggle" />
+                  <div className="flex items-center gap-2">
+                    <LanguageSelector />
+                    <ThemeToggle />
+                  </div>
+                </header>
+                <main className="flex-1 overflow-y-auto">
+                  <AppRouter />
+                </main>
+              </div>
+            </div>
+          </SidebarProvider>
+        </Route>
+      </Switch>
+    </Router>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <TooltipProvider>
+          <AppLayout />
+          <Toaster />
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;
