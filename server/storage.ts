@@ -9,15 +9,19 @@ import {
   type Payroll, type InsertPayroll, payroll,
   type Advance, type InsertAdvance, advances,
 } from "@shared/schema";
-import { drizzle } from "drizzle-orm/better-sqlite3";
-import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/libsql";
+import { createClient } from "@libsql/client";
+
 import { eq, and, between, sql, desc, gte, lte } from "drizzle-orm";
 
-const sqlite = new Database(process.env.DATABASE_URL || "data.db");
-sqlite.pragma("journal_mode = WAL");
+const client = createClient({
+  url: process.env.DATABASE_URL || "file:data.db",
+  authToken: process.env.DATABASE_AUTH_TOKEN,
+});
 
 // ─── Auto-migration: create new tables if they don't exist ───────────────────
-sqlite.exec(`
+async function migrate() {
+  await client.executeMultiple(`
   CREATE TABLE IF NOT EXISTS contractors (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -77,12 +81,14 @@ sqlite.exec(`
 
 // Add worker_id column to attendance if it doesn't exist (safe migration)
 try {
-  sqlite.exec(`ALTER TABLE attendance ADD COLUMN worker_id INTEGER`);
+  await client.executeMultiple(`ALTER TABLE attendance ADD COLUMN worker_id INTEGER`);
 } catch {
-  // Column already exists — ignore
+    // Column already exists — ignore
+  }
 }
+migrate().catch(console.error);
 
-export const db = drizzle(sqlite);
+export const db = drizzle(client);
 
 export interface IStorage {
   // Users
@@ -162,33 +168,33 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   // ─── Users ───
   async getUser(id: number): Promise<User | undefined> {
-    return db.select().from(users).where(eq(users.id, id)).get();
+    return db.select().from(users).where(eq(users.id, id)).then(res => res[0]);
   }
   async getUserByEmail(email: string): Promise<User | undefined> {
-    return db.select().from(users).where(eq(users.email, email)).get();
+    return db.select().from(users).where(eq(users.email, email)).then(res => res[0]);
   }
   async getUsers(): Promise<User[]> {
-    return db.select().from(users).all();
+    return db.select().from(users);
   }
   async createUser(user: InsertUser): Promise<User> {
-    return db.insert(users).values(user).returning().get();
+    return db.insert(users).values(user).returning().then(res => res[0]);
   }
   async updateUser(id: number, data: Partial<InsertUser>): Promise<User | undefined> {
-    return db.update(users).set(data).where(eq(users.id, id)).returning().get();
+    return db.update(users).set(data).where(eq(users.id, id)).returning().then(res => res[0]);
   }
 
   // ─── Sites ───
   async getSites(): Promise<Site[]> {
-    return db.select().from(sites).all();
+    return db.select().from(sites);
   }
   async getSite(id: number): Promise<Site | undefined> {
-    return db.select().from(sites).where(eq(sites.id, id)).get();
+    return db.select().from(sites).where(eq(sites.id, id)).then(res => res[0]);
   }
   async createSite(site: InsertSite): Promise<Site> {
-    return db.insert(sites).values(site).returning().get();
+    return db.insert(sites).values(site).returning().then(res => res[0]);
   }
   async updateSite(id: number, data: Partial<InsertSite>): Promise<Site | undefined> {
-    return db.update(sites).set(data).where(eq(sites.id, id)).returning().get();
+    return db.update(sites).set(data).where(eq(sites.id, id)).returning().then(res => res[0]);
   }
   async deleteSite(id: number): Promise<void> {
     db.delete(sites).where(eq(sites.id, id)).run();
@@ -197,21 +203,21 @@ export class DatabaseStorage implements IStorage {
   // ─── Contractors ───
   async getContractors(status?: string): Promise<Contractor[]> {
     if (status && status !== "all") {
-      return db.select().from(contractors).where(eq(contractors.status, status as any)).all();
+      return db.select().from(contractors).where(eq(contractors.status, status as any));
     }
-    return db.select().from(contractors).all();
+    return db.select().from(contractors);
   }
   async getContractor(id: number): Promise<Contractor | undefined> {
-    return db.select().from(contractors).where(eq(contractors.id, id)).get();
+    return db.select().from(contractors).where(eq(contractors.id, id)).then(res => res[0]);
   }
   async createContractor(c: InsertContractor): Promise<Contractor> {
     return db.insert(contractors).values({
       ...c,
       createdAt: new Date().toISOString(),
-    } as any).returning().get();
+    } as any).returning().then(res => res[0]);
   }
   async updateContractor(id: number, data: Partial<InsertContractor>): Promise<Contractor | undefined> {
-    return db.update(contractors).set(data).where(eq(contractors.id, id)).returning().get();
+    return db.update(contractors).set(data).where(eq(contractors.id, id)).returning().then(res => res[0]);
   }
 
   // ─── Workers ───
@@ -221,28 +227,28 @@ export class DatabaseStorage implements IStorage {
     if (siteId) conditions.push(eq(workers.siteId, siteId));
     if (status && status !== "all") conditions.push(eq(workers.status, status as any));
     if (conditions.length > 0) {
-      return (query as any).where(and(...conditions)).all();
+      return (query as any).where(and(...conditions));
     }
-    return query.all();
+    return query;
   }
   async getWorker(id: number): Promise<Worker | undefined> {
-    return db.select().from(workers).where(eq(workers.id, id)).get();
+    return db.select().from(workers).where(eq(workers.id, id)).then(res => res[0]);
   }
   async createWorker(w: InsertWorker): Promise<Worker> {
     return db.insert(workers).values({
       ...w,
       createdAt: new Date().toISOString(),
-    } as any).returning().get();
+    } as any).returning().then(res => res[0]);
   }
   async updateWorker(id: number, data: Partial<InsertWorker>): Promise<Worker | undefined> {
-    return db.update(workers).set(data).where(eq(workers.id, id)).returning().get();
+    return db.update(workers).set(data).where(eq(workers.id, id)).returning().then(res => res[0]);
   }
 
   // ─── Attendance ───
   async getAttendance(siteId: number, date: string): Promise<Attendance[]> {
     return db.select().from(attendance)
       .where(and(eq(attendance.siteId, siteId), eq(attendance.date, date)))
-      .all();
+      ;
   }
   async getAttendanceRange(siteId: number, from: string, to: string): Promise<Attendance[]> {
     return db.select().from(attendance)
@@ -251,14 +257,14 @@ export class DatabaseStorage implements IStorage {
         between(attendance.date, from, to)
       ))
       .orderBy(desc(attendance.date))
-      .all();
+      ;
   }
   async getAttendanceSummary(siteId: number, month: string): Promise<{ present: number; absent: number; halfDay: number }> {
-    const rows = db.select().from(attendance)
+    const rows = await db.select().from(attendance)
       .where(and(
         eq(attendance.siteId, siteId),
         sql`substr(${attendance.date}, 1, 7) = ${month}`
-      )).all();
+      ));
     let present = 0, absent = 0, halfDay = 0;
     for (const r of rows) {
       if (r.status === "present") present++;
@@ -268,11 +274,11 @@ export class DatabaseStorage implements IStorage {
     return { present, absent, halfDay };
   }
   async getAttendanceByWorkerMonth(workerId: number, month: string): Promise<{ present: number; half: number; absent: number }> {
-    const rows = db.select().from(attendance)
+    const rows = await db.select().from(attendance)
       .where(and(
         eq(attendance.workerId as any, workerId),
         sql`substr(${attendance.date}, 1, 7) = ${month}`
-      )).all();
+      ));
     let present = 0, half = 0, absent = 0;
     for (const r of rows) {
       if (r.status === "present") present++;
@@ -282,44 +288,44 @@ export class DatabaseStorage implements IStorage {
     return { present, half, absent };
   }
   async createAttendance(a: InsertAttendance): Promise<Attendance> {
-    return db.insert(attendance).values(a).returning().get();
+    return db.insert(attendance).values(a).returning().then(res => res[0]);
   }
   async bulkCreateAttendance(records: InsertAttendance[]): Promise<Attendance[]> {
     const results: Attendance[] = [];
     for (const rec of records) {
-      const existing = db.select().from(attendance)
+      const existing = await db.select().from(attendance)
         .where(and(
           eq(attendance.siteId, rec.siteId),
           eq(attendance.workerName, rec.workerName),
           eq(attendance.date, rec.date)
         ))
-        .get();
+        .then(res => res[0]);
       if (existing) {
-        const updated = db.update(attendance)
+        const updated = await db.update(attendance)
           .set({ status: rec.status, checkIn: rec.checkIn ?? null, checkOut: rec.checkOut ?? null })
           .where(eq(attendance.id, existing.id))
           .returning()
-          .get();
+          .then(res => res[0]);
         if (updated) results.push(updated);
       } else {
-        const inserted = db.insert(attendance).values(rec).returning().get();
+        const inserted = await db.insert(attendance).values(rec).returning().then(res => res[0]);
         results.push(inserted);
       }
     }
     return results;
   }
   async updateAttendance(id: number, data: Partial<InsertAttendance>): Promise<Attendance | undefined> {
-    return db.update(attendance).set(data).where(eq(attendance.id, id)).returning().get();
+    return db.update(attendance).set(data).where(eq(attendance.id, id)).returning().then(res => res[0]);
   }
   async deleteAttendance(id: number): Promise<void> {
-    db.delete(attendance).where(eq(attendance.id, id)).run();
+    await db.delete(attendance).where(eq(attendance.id, id));
   }
 
   // ─── DPR ───
   async getDpr(siteId: number, date: string): Promise<Dpr | undefined> {
     return db.select().from(dpr)
       .where(and(eq(dpr.siteId, siteId), eq(dpr.date, date)))
-      .get();
+      .then(res => res[0]);
   }
   async getDprHistory(siteId: number, from: string, to: string): Promise<Dpr[]> {
     return db.select().from(dpr)
@@ -328,13 +334,13 @@ export class DatabaseStorage implements IStorage {
         between(dpr.date, from, to)
       ))
       .orderBy(desc(dpr.date))
-      .all();
+      ;
   }
   async createDpr(d: InsertDpr): Promise<Dpr> {
-    return db.insert(dpr).values(d).returning().get();
+    return db.insert(dpr).values(d).returning().then(res => res[0]);
   }
   async updateDpr(id: number, data: Partial<InsertDpr>): Promise<Dpr | undefined> {
-    return db.update(dpr).set(data).where(eq(dpr.id, id)).returning().get();
+    return db.update(dpr).set(data).where(eq(dpr.id, id)).returning().then(res => res[0]);
   }
 
   // ─── Expenses ───
@@ -343,12 +349,12 @@ export class DatabaseStorage implements IStorage {
       return db.select().from(expenses)
         .where(and(eq(expenses.siteId, siteId), eq(expenses.expenseDate, date)))
         .orderBy(desc(expenses.expenseDate))
-        .all();
+        ;
     }
     return db.select().from(expenses)
       .where(eq(expenses.siteId, siteId))
       .orderBy(desc(expenses.expenseDate))
-      .all();
+      ;
   }
   async getExpensesByMonth(siteId: number, month: string): Promise<Expense[]> {
     return db.select().from(expenses)
@@ -357,7 +363,7 @@ export class DatabaseStorage implements IStorage {
         sql`substr(${expenses.expenseDate}, 1, 7) = ${month}`
       ))
       .orderBy(desc(expenses.expenseDate))
-      .all();
+      ;
   }
   async getExpensesRange(siteId: number, from: string, to: string): Promise<Expense[]> {
     return db.select().from(expenses)
@@ -366,7 +372,7 @@ export class DatabaseStorage implements IStorage {
         between(expenses.expenseDate, from, to)
       ))
       .orderBy(desc(expenses.expenseDate))
-      .all();
+      ;
   }
   async getExpenseSummary(siteId: number, month: string): Promise<{ category: string; total: number }[]> {
     const rows = db.select({
@@ -378,14 +384,14 @@ export class DatabaseStorage implements IStorage {
         sql`substr(${expenses.expenseDate}, 1, 7) = ${month}`
       ))
       .groupBy(expenses.category)
-      .all();
+      ;
     return rows;
   }
   async createExpense(e: InsertExpense): Promise<Expense> {
-    return db.insert(expenses).values(e).returning().get();
+    return db.insert(expenses).values(e).returning().then(res => res[0]);
   }
   async updateExpense(id: number, data: Partial<InsertExpense>): Promise<Expense | undefined> {
-    return db.update(expenses).set(data).where(eq(expenses.id, id)).returning().get();
+    return db.update(expenses).set(data).where(eq(expenses.id, id)).returning().then(res => res[0]);
   }
   async deleteExpense(id: number): Promise<void> {
     db.delete(expenses).where(eq(expenses.id, id)).run();
@@ -397,74 +403,67 @@ export class DatabaseStorage implements IStorage {
     if (siteId) conditions.push(eq(payroll.siteId, siteId));
     if (month) conditions.push(eq(payroll.month, month));
     if (conditions.length > 0) {
-      return db.select().from(payroll).where(and(...conditions)).all();
+      return db.select().from(payroll).where(and(...conditions));
     }
-    return db.select().from(payroll).all();
+    return db.select().from(payroll);
   }
   async getPayrollByWorker(workerId: number): Promise<Payroll[]> {
-    return db.select().from(payroll).where(eq(payroll.workerId, workerId)).orderBy(desc(payroll.month)).all();
+    return db.select().from(payroll).where(eq(payroll.workerId, workerId)).orderBy(desc(payroll.month));
   }
   async upsertPayroll(data: InsertPayroll): Promise<Payroll> {
     // Check if payroll row already exists for this worker+site+month
-    const existing = db.select().from(payroll)
+    const existing = await db.select().from(payroll)
       .where(and(
         eq(payroll.workerId, data.workerId),
         eq(payroll.siteId, data.siteId),
         eq(payroll.month, data.month)
       ))
-      .get();
+      .then(res => res[0]);
     if (existing) {
-      return db.update(payroll).set(data).where(eq(payroll.id, existing.id)).returning().get()!;
+      return db.update(payroll).set(data).where(eq(payroll.id, existing.id)).returning().then(res => res[0])!;
     }
     return db.insert(payroll).values({
       ...data,
       createdAt: new Date().toISOString(),
-    } as any).returning().get();
+    } as any).returning().then(res => res[0]);
   }
   async updatePayroll(id: number, data: Partial<InsertPayroll>): Promise<Payroll | undefined> {
-    return db.update(payroll).set(data).where(eq(payroll.id, id)).returning().get();
+    return db.update(payroll).set(data).where(eq(payroll.id, id)).returning().then(res => res[0]);
   }
   async generatePayroll(siteId: number, month: string): Promise<Payroll[]> {
     // Get all active workers for this site
-    const siteWorkers = db.select().from(workers)
+    const siteWorkers = await db.select().from(workers)
       .where(and(eq(workers.siteId, siteId), eq(workers.status, "active")))
-      .all();
+      ;
 
     const results: Payroll[] = [];
     const workingDaysInMonth = 26; // Standard Indian construction working days
 
     for (const worker of siteWorkers) {
       // Count attendance for this worker+month by worker_id
-      const attRows = db.select().from(attendance)
+      const attRows = await db.select().from(attendance)
         .where(and(
           eq(attendance.siteId, siteId),
           sql`${attendance.workerId} = ${worker.id}`,
           sql`substr(${attendance.date}, 1, 7) = ${month}`
-        ))
-        .all();
+        ));
 
       // Fallback: match by name if no worker_id linked
       const attRowsByName = attRows.length === 0
-        ? db.select().from(attendance)
+        ? await db.select().from(attendance)
           .where(and(
             eq(attendance.siteId, siteId),
             eq(attendance.workerName, worker.name),
             sql`substr(${attendance.date}, 1, 7) = ${month}`
           ))
-          .all()
         : attRows;
 
-      const presentDays = attRowsByName.filter(r => r.status === "present").length;
+      const presentDays = attRowsByName.filter((r: any) => r.status === "present").length;
       const halfDays = attRowsByName.filter(r => r.status === "half_day").length;
       const absentDays = attRowsByName.filter(r => r.status === "absent").length;
 
       // Sum advances for this worker in this month
-      const advanceRows = db.select().from(advances)
-        .where(and(
-          eq(advances.workerId, worker.id),
-          sql`substr(${advances.date}, 1, 7) = ${month}`
-        ))
-        .all();
+      const advanceRows = await db.select().from(advances).where(and(eq(advances.workerId, worker.id), sql`substr(${advances.date}, 1, 7) = ${month}`));
       const totalAdvance = advanceRows.reduce((s, a) => s + a.amount, 0);
 
       // Calculate gross salary
@@ -500,7 +499,7 @@ export class DatabaseStorage implements IStorage {
 
   // ─── Advances ───
   async getAdvances(workerId: number): Promise<Advance[]> {
-    return db.select().from(advances).where(eq(advances.workerId, workerId)).orderBy(desc(advances.date)).all();
+    return db.select().from(advances).where(eq(advances.workerId, workerId)).orderBy(desc(advances.date));
   }
   async getAdvancesByMonth(workerId: number, month: string): Promise<Advance[]> {
     return db.select().from(advances)
@@ -508,13 +507,13 @@ export class DatabaseStorage implements IStorage {
         eq(advances.workerId, workerId),
         sql`substr(${advances.date}, 1, 7) = ${month}`
       ))
-      .all();
+      ;
   }
   async createAdvance(a: InsertAdvance): Promise<Advance> {
     return db.insert(advances).values({
       ...a,
       createdAt: new Date().toISOString(),
-    } as any).returning().get();
+    } as any).returning().then(res => res[0]);
   }
 
   // ─── Dashboard ───
@@ -529,53 +528,31 @@ export class DatabaseStorage implements IStorage {
     const today = new Date().toISOString().slice(0, 10);
     const currentMonth = today.slice(0, 7);
 
-    const activeSites = db.select({ count: sql<number>`count(*)` })
-      .from(sites).where(eq(sites.status, "active")).get()?.count ?? 0;
+    const activeSites = (await db.select({ count: sql<number>`count(*)` }).from(sites).where(eq(sites.status, "active")))[0]?.count ?? 0;
 
-    const totalWorkers = db.select({ count: sql<number>`count(*)` })
-      .from(workers).where(eq(workers.status, "active")).get()?.count ?? 0;
+    const totalWorkers = (await db.select({ count: sql<number>`count(*)` }).from(workers).where(eq(workers.status, "active")))[0]?.count ?? 0;
 
-    const monthlyPayrollResult = db.select({ total: sql<number>`coalesce(sum(net_salary), 0)` })
-      .from(payroll)
-      .where(eq(payroll.month, currentMonth))
-      .get()?.total ?? 0;
+    const monthlyPayrollResult = (await db.select({ total: sql<number>`coalesce(sum(net_salary), 0)` }).from(payroll).where(eq(payroll.month, currentMonth)))[0]?.total ?? 0;
 
     let todayAttendance: number;
     let todayExpensesTotal: number;
     let pendingDprs: number;
 
     if (siteId) {
-      todayAttendance = db.select({ count: sql<number>`count(*)` })
-        .from(attendance)
-        .where(and(eq(attendance.siteId, siteId), eq(attendance.date, today), eq(attendance.status, "present")))
-        .get()?.count ?? 0;
+      todayAttendance = (await db.select({ count: sql<number>`count(*)` }).from(attendance).where(and(eq(attendance.siteId, siteId), eq(attendance.date, today), eq(attendance.status, "present"))))[0]?.count ?? 0;
 
-      todayExpensesTotal = db.select({ total: sql<number>`coalesce(sum(${expenses.amount}), 0)` })
-        .from(expenses)
-        .where(and(eq(expenses.siteId, siteId), eq(expenses.expenseDate, today)))
-        .get()?.total ?? 0;
+      todayExpensesTotal = (await db.select({ total: sql<number>`coalesce(sum(${expenses.amount}), 0)` }).from(expenses).where(and(eq(expenses.siteId, siteId), eq(expenses.expenseDate, today))))[0]?.total ?? 0;
 
-      const dprExists = db.select({ count: sql<number>`count(*)` })
-        .from(dpr)
-        .where(and(eq(dpr.siteId, siteId), eq(dpr.date, today)))
-        .get()?.count ?? 0;
+      const dprExists = (await db.select({ count: sql<number>`count(*)` }).from(dpr).where(and(eq(dpr.siteId, siteId), eq(dpr.date, today))))[0]?.count ?? 0;
       pendingDprs = dprExists > 0 ? 0 : 1;
     } else {
-      todayAttendance = db.select({ count: sql<number>`count(*)` })
-        .from(attendance)
-        .where(and(eq(attendance.date, today), eq(attendance.status, "present")))
-        .get()?.count ?? 0;
+      todayAttendance = (await db.select({ count: sql<number>`count(*)` }).from(attendance).where(and(eq(attendance.date, today), eq(attendance.status, "present"))))[0]?.count ?? 0;
 
-      todayExpensesTotal = db.select({ total: sql<number>`coalesce(sum(${expenses.amount}), 0)` })
-        .from(expenses)
-        .where(eq(expenses.expenseDate, today))
-        .get()?.total ?? 0;
+      todayExpensesTotal = (await db.select({ total: sql<number>`coalesce(sum(${expenses.amount}), 0)` }).from(expenses).where(eq(expenses.expenseDate, today)))[0]?.total ?? 0;
 
-      const sitesWithDpr = db.select({ siteId: dpr.siteId })
-        .from(dpr).where(eq(dpr.date, today)).all();
+      const sitesWithDpr = await db.select({ siteId: dpr.siteId }).from(dpr).where(eq(dpr.date, today));
       const sitesWithDprIds = new Set(sitesWithDpr.map(s => s.siteId));
-      const allActiveSites = db.select({ id: sites.id })
-        .from(sites).where(eq(sites.status, "active")).all();
+      const allActiveSites = await db.select({ id: sites.id }).from(sites).where(eq(sites.status, "active"));
       pendingDprs = allActiveSites.filter(s => !sitesWithDprIds.has(s.id)).length;
     }
 
