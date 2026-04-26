@@ -107,8 +107,8 @@ export const PLANS: PricingPlan[] = [
     monthlyPrice: 999,
     yearlyPrice: 9990, // ~2 months free
     razorpayPlanId: {
-      monthly: null, // e.g. "plan_xxxxxxxxxxxxxxx"
-      yearly: null,  // e.g. "plan_xxxxxxxxxxxxxxx"
+      monthly: "plan_Si6CdxpbdheQXm",
+      yearly: "plan_Si6DWlad4vDlbr",
     },
     stripePriceId: {
       monthly: null, // e.g. "price_xxxxxxxxxxxxxxxxxx"
@@ -150,8 +150,8 @@ export const PLANS: PricingPlan[] = [
     monthlyPrice: 2499,
     yearlyPrice: 24990, // ~2 months free
     razorpayPlanId: {
-      monthly: null, // e.g. "plan_xxxxxxxxxxxxxxx"
-      yearly: null,  // e.g. "plan_xxxxxxxxxxxxxxx"
+      monthly: "plan_Si6Dvf5X2lNf8v",
+      yearly: "plan_Si6EUUuGdQSnH2",
     },
     stripePriceId: {
       monthly: null, // e.g. "price_xxxxxxxxxxxxxxxxxx"
