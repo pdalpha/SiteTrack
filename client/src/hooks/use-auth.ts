@@ -39,6 +39,37 @@ export function useLogin() {
   });
 }
 
+export function useRegister() {
+  return useMutation({
+    mutationFn: async ({
+      name,
+      companyName,
+      email,
+      mobile,
+      password,
+    }: {
+      name: string;
+      companyName: string;
+      email: string;
+      mobile: string;
+      password: string;
+    }) => {
+      const res = await apiRequest("api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ name, companyName, email, mobile, password }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Registration failed");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
+  });
+}
+
 export function useLogout() {
   return useMutation({
     mutationFn: async () => {

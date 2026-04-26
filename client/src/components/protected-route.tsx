@@ -1,15 +1,64 @@
 import { useAuth } from "@/hooks/use-auth";
-import { Redirect } from "wouter";
+import { useSubscription } from "@/hooks/use-subscription";
+import { Redirect, useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Lock, Zap, Clock } from "lucide-react";
 
 interface ProtectedRouteProps {
   component: React.ComponentType;
 }
 
-export function ProtectedRoute({ component: Component }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading } = useAuth();
+function TrialExpiredWall() {
+  const [, navigate] = useLocation();
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/30 p-4">
+      <Card className="w-full max-w-lg shadow-2xl border-destructive/20">
+        <CardContent className="pt-10 pb-10 text-center space-y-6">
+          {/* Icon */}
+          <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+            <Lock className="w-8 h-8 text-destructive" />
+          </div>
 
-  if (isLoading) {
+          {/* Text */}
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-foreground">Your free trial has ended</h2>
+            <p className="text-muted-foreground">
+              Your 14-day trial has expired. Upgrade to a paid plan to continue using SiteTrack and access all your data.
+            </p>
+          </div>
+
+          {/* Trial details */}
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-4 py-3">
+            <Clock className="w-4 h-4 shrink-0" />
+            <span>Your data is safe — it will be available immediately after you upgrade.</span>
+          </div>
+
+          {/* CTAs */}
+          <div className="flex flex-col gap-3">
+            <Button
+              onClick={() => navigate("/pricing")}
+              className="w-full gap-2 py-6 text-base font-semibold"
+            >
+              <Zap className="w-5 h-5 fill-current" />
+              View Plans & Upgrade
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Plans start at ₹999/month · Cancel anytime
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export function ProtectedRoute({ component: Component }: ProtectedRouteProps) {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { data: subscription, isLoading: subLoading } = useSubscription();
+
+  if (authLoading || subLoading) {
     return (
       <div className="p-6 space-y-4 max-w-7xl mx-auto">
         <Skeleton className="h-8 w-48" />
@@ -25,6 +74,20 @@ export function ProtectedRoute({ component: Component }: ProtectedRouteProps) {
 
   if (!isAuthenticated) {
     return <Redirect to="/login" />;
+  }
+
+  // Check if trial has expired
+  if (subscription) {
+    const isTrialing = subscription.status === "trialing";
+    const isExpired = subscription.status === "expired";
+    const trialOver =
+      isTrialing &&
+      subscription.currentPeriodEnd &&
+      new Date(subscription.currentPeriodEnd) < new Date();
+
+    if (isExpired || trialOver) {
+      return <TrialExpiredWall />;
+    }
   }
 
   return <Component />;

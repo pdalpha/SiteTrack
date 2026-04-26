@@ -122,6 +122,67 @@ export async function setupAuth(app: Express) {
     });
   });
 
+  // POST /api/auth/register (self-serve signup — creates admin + free trial)
+  app.post("/api/auth/register", async (req, res, next) => {
+    try {
+      const { name, companyName, email, mobile, password } = req.body;
+
+      // Validate required fields
+      if (!name || !email || !password) {
+        return res.status(400).json({ error: "name, email, and password are required" });
+      }
+      if (password.length < 6) {
+        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: "Invalid email address" });
+      }
+
+      // Check for duplicate email
+      const existing = await storage.getUserByEmail(email.toLowerCase().trim());
+      if (existing) {
+        return res.status(409).json({ error: "An account with this email already exists" });
+      }
+
+      // Create the user as admin
+      const user = await storage.createUser({
+        name: name.trim(),
+        email: email.toLowerCase().trim(),
+        mobile: mobile?.trim() || null,
+        password: hashPassword(password),
+        role: "admin",
+        active: true,
+      });
+
+      // Create a 14-day free_trial subscription
+      const trialEnd = new Date();
+      trialEnd.setDate(trialEnd.getDate() + 14);
+
+      await storage.upsertSubscription({
+        userId: user.id,
+        planCode: "free_trial",
+        billingInterval: "monthly",
+        gateway: null,
+        gatewaySubscriptionId: null,
+        status: "trialing",
+        currentPeriodStart: new Date().toISOString(),
+        currentPeriodEnd: trialEnd.toISOString(),
+        cancelAtPeriodEnd: false,
+      });
+
+      // Auto-login the new user
+      req.logIn(user, (loginErr) => {
+        if (loginErr) return next(loginErr);
+        const { password: _pw, ...safeUser } = user;
+        return res.status(201).json({ user: safeUser, trialEndsAt: trialEnd.toISOString() });
+      });
+
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // GET /api/auth/me
   app.get("/api/auth/me", requireAuth, (req, res) => {
     const user = req.user as User;

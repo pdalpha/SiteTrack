@@ -15,6 +15,7 @@ import { useEffect } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { apiRequest } from "./lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
+import { TrialBanner } from "@/components/trial-banner";
 import Dashboard from "@/pages/dashboard";
 import SitesPage from "@/pages/sites";
 import AttendancePage from "@/pages/attendance";
@@ -28,6 +29,7 @@ import WorkersPage from "@/pages/workers";
 import ContractorsPage from "@/pages/contractors";
 import PayrollPage from "@/pages/payroll";
 import LoginPage from "@/pages/login";
+import RegisterPage from "@/pages/register";
 import SubscriptionSuccess from "@/pages/subscription-success";
 import NotFound from "@/pages/not-found";
 import { useAuth } from "@/hooks/use-auth";
@@ -126,6 +128,7 @@ function AppLayout() {
       <Switch>
         {/* Public routes — no sidebar */}
         <Route path="/login" component={LoginPage} />
+        <Route path="/register" component={RegisterPage} />
         <Route path="/pricing" component={PricingPage} />
 
         {/* All other routes use the sidebar layout */}
@@ -134,6 +137,7 @@ function AppLayout() {
             <div className="flex h-screen w-full">
               <AppSidebar />
               <div className="flex flex-col flex-1 min-w-0">
+                <TrialBanner />
                 <header className="flex items-center justify-between gap-2 px-4 py-2 border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
                   <SidebarTrigger data-testid="button-sidebar-toggle" />
                   <div className="flex items-center gap-2">

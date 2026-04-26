@@ -107,6 +107,16 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
+        <p className="text-center text-sm text-muted-foreground">
+          New to SiteTrack?{" "}
+          <button
+            onClick={() => navigate("/register")}
+            className="text-primary font-semibold hover:underline"
+          >
+            Start your 14-day free trial →
+          </button>
+        </p>
+
         <p className="text-center text-xs text-muted-foreground">
           SiteTrack v1.0 — Construction Intelligence Platform
         </p>
