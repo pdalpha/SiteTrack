@@ -18,6 +18,14 @@ import {
   EXPENSE_CATEGORY_LABELS,
 } from "@shared/schema";
 import { z } from "zod";
+import {
+  createRazorpaySubscription,
+  cancelRazorpaySubscription,
+  verifyRazorpayWebhook,
+  createStripeCheckoutSession,
+  cancelStripeSubscription,
+  constructStripeEvent,
+} from "./payments";
 
 // ─── CSV helpers ──────────────────────────────────────────────────────────────
 function toCSV(rows: Record<string, any>[], columns: { key: string; label: string }[]): string {
@@ -789,6 +797,220 @@ export async function registerRoutes(
       const row = await storage.createAdvance(data);
       res.status(201).json(row);
     } catch (e: any) { res.status(400).json({ error: e.message }); }
+  });
+
+  // ─── Subscriptions ─────────────────────────────────────────────────────────
+
+  // Get current user's subscription
+  app.get("/api/subscriptions/current", requireAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      const sub = await storage.getSubscription(userId);
+      res.json(sub ?? { planCode: "free_trial", status: "trialing" });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Create Razorpay subscription checkout
+  app.post("/api/subscriptions/razorpay/create", requireAuth, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const { planId, planCode, billingInterval } = z.object({
+        planId: z.string(),
+        planCode: z.string(),
+        billingInterval: z.enum(["monthly", "yearly"]),
+      }).parse(req.body);
+
+      const totalCount = billingInterval === "yearly" ? 12 : 12; // 12 billing cycles
+      const razorpayRes = await createRazorpaySubscription({
+        planId,
+        totalCount,
+        customerEmail: user.email,
+        customerName: user.name,
+        customerContact: user.mobile,
+        notes: { userId: String(user.id), planCode, billingInterval },
+      });
+
+      // Save pending subscription
+      await storage.upsertUserSubscription(user.id, {
+        planCode: planCode as any,
+        billingInterval: billingInterval as any,
+        gateway: "razorpay",
+        gatewaySubscriptionId: razorpayRes.id,
+        status: "trialing",
+      });
+
+      res.json({ subscriptionId: razorpayRes.id, shortUrl: razorpayRes.short_url });
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  });
+
+  // Create Stripe Checkout Session
+  app.post("/api/subscriptions/stripe/create", requireAuth, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const { priceId, planCode, billingInterval } = z.object({
+        priceId: z.string(),
+        planCode: z.string(),
+        billingInterval: z.enum(["monthly", "yearly"]),
+      }).parse(req.body);
+
+      const session = await createStripeCheckoutSession({
+        priceId,
+        userId: user.id,
+        userEmail: user.email,
+        planCode,
+        billingInterval,
+      });
+
+      res.json({ sessionId: session.sessionId, url: session.url });
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  });
+
+  // Cancel subscription
+  app.post("/api/subscriptions/cancel", requireAuth, async (req, res) => {
+    try {
+      const userId = (req as any).user?.id;
+      const sub = await storage.getSubscription(userId);
+      if (!sub || !sub.gatewaySubscriptionId) {
+        return res.status(404).json({ error: "No active subscription found" });
+      }
+      if (sub.gateway === "razorpay") {
+        await cancelRazorpaySubscription(sub.gatewaySubscriptionId, true);
+      } else if (sub.gateway === "stripe") {
+        await cancelStripeSubscription(sub.gatewaySubscriptionId, false);
+      }
+      await storage.updateSubscription(sub.id, { cancelAtPeriodEnd: true });
+      res.json({ message: "Subscription will cancel at end of billing period" });
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  });
+
+  // ─── Razorpay Webhook ──────────────────────────────────────────────────────
+  app.post("/api/webhooks/razorpay", async (req, res) => {
+    const signature = req.headers["x-razorpay-signature"] as string;
+    const rawBody = JSON.stringify(req.body);
+
+    try {
+      if (!verifyRazorpayWebhook(rawBody, signature)) {
+        return res.status(400).json({ error: "Invalid signature" });
+      }
+    } catch {
+      // If secret not set, skip verification in dev
+      if (process.env.NODE_ENV === "production") {
+        return res.status(400).json({ error: "Webhook secret not configured" });
+      }
+    }
+
+    const event = req.body;
+    const eventName: string = event.event;
+
+    try {
+      const subscriptionEntity = event.payload?.subscription?.entity;
+      if (!subscriptionEntity) return res.json({ received: true });
+
+      const gatewaySubId: string = subscriptionEntity.id;
+      const sub = await storage.getSubscriptionByGatewayId(gatewaySubId);
+      if (!sub) return res.json({ received: true }); // unknown subscription
+
+      const periodStart = subscriptionEntity.current_start
+        ? new Date(subscriptionEntity.current_start * 1000).toISOString()
+        : undefined;
+      const periodEnd = subscriptionEntity.current_end
+        ? new Date(subscriptionEntity.current_end * 1000).toISOString()
+        : undefined;
+
+      if (eventName === "subscription.activated") {
+        await storage.updateSubscription(sub.id, {
+          status: "active",
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
+        });
+      } else if (eventName === "subscription.charged") {
+        await storage.updateSubscription(sub.id, {
+          status: "active",
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
+        });
+      } else if (eventName === "subscription.cancelled") {
+        await storage.updateSubscription(sub.id, { status: "cancelled" });
+      } else if (eventName === "subscription.completed") {
+        await storage.updateSubscription(sub.id, { status: "expired" });
+      } else if (eventName === "subscription.halted") {
+        await storage.updateSubscription(sub.id, { status: "past_due" });
+      }
+
+      res.json({ received: true });
+    } catch (e: any) {
+      console.error("Razorpay webhook error:", e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ─── Stripe Webhook ────────────────────────────────────────────────────────
+  app.post("/api/webhooks/stripe", async (req, res) => {
+    const signature = req.headers["stripe-signature"] as string;
+    let stripeEvent: any;
+
+    try {
+      const rawBody = (req as any).rawBody || JSON.stringify(req.body);
+      stripeEvent = constructStripeEvent(rawBody, signature);
+    } catch (e: any) {
+      console.error("Stripe webhook signature error:", e.message);
+      return res.status(400).json({ error: `Webhook error: ${e.message}` });
+    }
+
+    try {
+      switch (stripeEvent.type) {
+        case "checkout.session.completed": {
+          const session = stripeEvent.data.object;
+          const userId = parseInt(session.metadata?.userId || session.client_reference_id || "0");
+          const planCode = session.metadata?.planCode || "starter";
+          const billingInterval = session.metadata?.billingInterval || "monthly";
+          const stripeSubId: string = session.subscription;
+
+          if (userId) {
+            await storage.upsertUserSubscription(userId, {
+              planCode: planCode as any,
+              billingInterval: billingInterval as any,
+              gateway: "stripe",
+              gatewaySubscriptionId: stripeSubId,
+              gatewayCustomerId: session.customer,
+              status: "active",
+            });
+          }
+          break;
+        }
+        case "customer.subscription.updated": {
+          const stripeSub = stripeEvent.data.object;
+          const existing = await storage.getSubscriptionByGatewayId(stripeSub.id);
+          if (existing) {
+            const newStatus = stripeSub.status === "active" ? "active"
+              : stripeSub.status === "trialing" ? "trialing"
+              : stripeSub.status === "past_due" ? "past_due"
+              : stripeSub.status === "canceled" ? "cancelled"
+              : "expired";
+            await storage.updateSubscription(existing.id, {
+              status: newStatus as any,
+              currentPeriodStart: new Date(stripeSub.current_period_start * 1000).toISOString(),
+              currentPeriodEnd: new Date(stripeSub.current_period_end * 1000).toISOString(),
+              cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
+            });
+          }
+          break;
+        }
+        case "customer.subscription.deleted": {
+          const stripeSub = stripeEvent.data.object;
+          const existing = await storage.getSubscriptionByGatewayId(stripeSub.id);
+          if (existing) {
+            await storage.updateSubscription(existing.id, { status: "cancelled" });
+          }
+          break;
+        }
+      }
+
+      res.json({ received: true });
+    } catch (e: any) {
+      console.error("Stripe webhook handler error:", e);
+      res.status(500).json({ error: e.message });
+    }
   });
 
   return httpServer;

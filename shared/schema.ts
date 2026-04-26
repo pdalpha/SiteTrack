@@ -185,3 +185,24 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   food: "Food",
   misc: "Misc",
 };
+
+// ─── Subscriptions ───
+export const subscriptions = sqliteTable("subscriptions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  planCode: text("plan_code", { enum: ["free_trial", "starter", "pro", "business"] }).notNull(),
+  billingInterval: text("billing_interval", { enum: ["monthly", "yearly"] }).notNull().default("monthly"),
+  gateway: text("gateway", { enum: ["razorpay", "stripe"] }),
+  gatewaySubscriptionId: text("gateway_subscription_id"),
+  gatewayCustomerId: text("gateway_customer_id"),
+  status: text("status", { enum: ["trialing", "active", "cancelled", "expired", "past_due"] }).notNull().default("trialing"),
+  currentPeriodStart: text("current_period_start"),
+  currentPeriodEnd: text("current_period_end"),
+  cancelAtPeriodEnd: integer("cancel_at_period_end", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
+export type Subscription = typeof subscriptions.$inferSelect;

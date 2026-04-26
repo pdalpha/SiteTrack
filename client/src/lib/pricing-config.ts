@@ -37,6 +37,14 @@ export interface PricingPlan {
     monthly: string | null;
     yearly: string | null;
   };
+  /**
+   * Stripe Price IDs — fill in after creating prices in Stripe dashboard.
+   * Used for international customers paying in USD.
+   */
+  stripePriceId: {
+    monthly: string | null;
+    yearly: string | null;
+  };
   /** Trial duration in days. 0 = no trial */
   trialDays: number;
   /** CTA button label */
@@ -62,6 +70,7 @@ export const PLANS: PricingPlan[] = [
     monthlyPrice: 0,
     yearlyPrice: 0,
     razorpayPlanId: { monthly: null, yearly: null }, // No charge — no plan ID needed
+    stripePriceId: { monthly: null, yearly: null }, // Free plan — no Stripe price needed
     trialDays: 14,
     cta: "Start Free Trial",
     ctaShort: "Start Free",
@@ -100,6 +109,10 @@ export const PLANS: PricingPlan[] = [
     razorpayPlanId: {
       monthly: null, // e.g. "plan_xxxxxxxxxxxxxxx"
       yearly: null,  // e.g. "plan_xxxxxxxxxxxxxxx"
+    },
+    stripePriceId: {
+      monthly: null, // e.g. "price_xxxxxxxxxxxxxxxxxx"
+      yearly: null,  // e.g. "price_xxxxxxxxxxxxxxxxxx"
     },
     trialDays: 14,
     cta: "Choose Starter",
@@ -140,6 +153,10 @@ export const PLANS: PricingPlan[] = [
       monthly: null, // e.g. "plan_xxxxxxxxxxxxxxx"
       yearly: null,  // e.g. "plan_xxxxxxxxxxxxxxx"
     },
+    stripePriceId: {
+      monthly: null, // e.g. "price_xxxxxxxxxxxxxxxxxx"
+      yearly: null,  // e.g. "price_xxxxxxxxxxxxxxxxxx"
+    },
     trialDays: 14,
     cta: "Choose Pro",
     ctaShort: "Pro",
@@ -178,6 +195,10 @@ export const PLANS: PricingPlan[] = [
     razorpayPlanId: {
       monthly: null, // e.g. "plan_xxxxxxxxxxxxxxx"
       yearly: null,  // e.g. "plan_xxxxxxxxxxxxxxx"
+    },
+    stripePriceId: {
+      monthly: null, // e.g. "price_xxxxxxxxxxxxxxxxxx"
+      yearly: null,  // e.g. "price_xxxxxxxxxxxxxxxxxx"
     },
     trialDays: 14,
     cta: "Contact Sales",

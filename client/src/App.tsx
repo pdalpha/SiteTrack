@@ -28,6 +28,7 @@ import WorkersPage from "@/pages/workers";
 import ContractorsPage from "@/pages/contractors";
 import PayrollPage from "@/pages/payroll";
 import LoginPage from "@/pages/login";
+import SubscriptionSuccess from "@/pages/subscription-success";
 import NotFound from "@/pages/not-found";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -108,6 +109,7 @@ function AppRouter() {
       <Route path="/workers" component={() => <ProtectedRoute component={WorkersPage} />} />
       <Route path="/contractors" component={() => <ProtectedRoute component={ContractorsPage} />} />
       <Route path="/payroll" component={() => <ProtectedRoute component={PayrollPage} />} />
+      <Route path="/subscription/success" component={() => <ProtectedRoute component={SubscriptionSuccess} />} />
       <Route component={NotFound} />
     </Switch>
   );

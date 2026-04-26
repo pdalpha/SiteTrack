@@ -67,38 +67,103 @@ function usePlanCTA(plan: PricingPlan, billingInterval: BillingInterval) {
   const { isAuthenticated } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
 
-  return () => {
+  /**
+   * Detect likely payment gateway based on timezone.
+   * Indian users (Asia/Kolkata) → Razorpay
+   * Everyone else → Stripe
+   */
+  const isIndianUser = (): boolean => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone === "Asia/Calcutta" ||
+        Intl.DateTimeFormat().resolvedOptions().timeZone === "Asia/Kolkata";
+    } catch {
+      return true; // Default to Razorpay if detection fails
+    }
+  };
+
+  return { isLoading, handleCTA: async () => {
     if (plan.planCode === "business") {
-      // Business: open contact / sales inquiry
       window.open("mailto:sales@sitetrack.app?subject=SiteTrack Business Plan Inquiry", "_blank");
       return;
     }
 
     if (!isAuthenticated) {
-      // Not logged in: send to login/signup flow with plan hint
       navigate(`/login?plan=${plan.planCode}&interval=${billingInterval}`);
       return;
     }
 
     if (plan.planCode === "free_trial") {
-      // Already authenticated — free trial is the current state
       toast({
         title: "You already have access",
-        description: "You're currently on a free trial. Choose a plan to continue after your trial ends.",
+        description: "You're currently on a free trial. Choose a paid plan to continue after your trial ends.",
       });
       return;
     }
 
-    // FUTURE: Initiate Razorpay checkout
-    // const planId = plan.razorpayPlanId[billingInterval];
-    // initiateRazorpayCheckout({ planCode: plan.planCode, planId, billingInterval });
+    setIsLoading(true);
+    try {
+      const useRazorpay = isIndianUser();
 
-    toast({
-      title: "Coming soon",
-      description: `Online payment for the ${plan.name} plan will be available shortly. Contact support to upgrade now.`,
-    });
-  };
+      if (useRazorpay) {
+        // ── Razorpay Flow ──
+        const planId = billingInterval === "yearly"
+          ? plan.razorpayPlanId.yearly
+          : plan.razorpayPlanId.monthly;
+
+        if (!planId) {
+          toast({
+            title: "Coming soon",
+            description: "Payment integration is being set up. Please contact support to upgrade.",
+          });
+          return;
+        }
+
+        const res = await fetch("/api/subscriptions/razorpay/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ planId, planCode: plan.planCode, billingInterval }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to create subscription");
+
+        // Redirect to Razorpay hosted payment page
+        window.location.href = data.shortUrl;
+
+      } else {
+        // ── Stripe Flow ──
+        const priceId = billingInterval === "yearly"
+          ? plan.stripePriceId.yearly
+          : plan.stripePriceId.monthly;
+
+        if (!priceId) {
+          toast({
+            title: "Coming soon",
+            description: "International payment integration is being set up. Please contact support.",
+          });
+          return;
+        }
+
+        const res = await fetch("/api/subscriptions/stripe/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ priceId, planCode: plan.planCode, billingInterval }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to create checkout session");
+
+        // Redirect to Stripe Checkout hosted page
+        window.location.href = data.url;
+      }
+    } catch (e: any) {
+      toast({ title: "Payment error", description: e.message, variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  }};
 }
 
 // ─── Plan Card ────────────────────────────────────────────────────────────────
@@ -109,7 +174,7 @@ function PlanCard({
   plan: PricingPlan;
   billingInterval: BillingInterval;
 }) {
-  const handleCTA = usePlanCTA(plan, billingInterval);
+  const { isLoading, handleCTA } = usePlanCTA(plan, billingInterval);
   const saving = getYearlySaving(plan);
   const isYearly = billingInterval === "yearly";
   const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
@@ -131,112 +196,104 @@ function PlanCard({
         </div>
       )}
 
-      <div className="p-6 pb-4 flex flex-col gap-4">
-        {/* Plan header */}
-        <div className="flex items-center gap-3">
-          <div
-            className={`p-2 rounded-lg ${
-              plan.recommended
-                ? "bg-primary/10 text-primary"
-                : "bg-muted text-muted-foreground"
-            }`}
-          >
+      {/* Plan header */}
+      <CardHeader className="p-8 pb-0">
+        <div className="flex items-center justify-between mb-4">
+          <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
             {PLAN_ICONS[plan.planCode]}
           </div>
-          <div>
-            <h3 className="font-semibold text-base leading-tight">{plan.name}</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">{plan.tagline}</p>
-          </div>
+          {isYearly && saving && (
+            <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-green-500/20 font-medium">
+              Save ₹{saving.toLocaleString("en-IN")}
+            </Badge>
+          )}
         </div>
-
-        {/* Price */}
         <div>
-          <div className="flex items-end gap-1">
-            <span className="text-3xl font-bold tabular-nums leading-none">
+          <h3 className="text-xl font-bold text-foreground">{plan.name}</h3>
+          <p className="text-sm text-muted-foreground mt-1 min-h-[40px]">{plan.tagline}</p>
+        </div>
+      </CardHeader>
+
+      <CardContent className="p-8 flex-1 flex flex-col">
+        {/* Pricing */}
+        <div className="mb-8">
+          <div className="flex items-baseline gap-1">
+            <span className="text-4xl font-bold tracking-tight">
               {formatPrice(price, billingInterval)}
             </span>
-            {price !== 0 && price !== null && (
-              <span className="text-sm text-muted-foreground mb-0.5">/month</span>
+            {price !== null && price !== 0 && (
+              <span className="text-muted-foreground font-medium">
+                /{isYearly ? "year" : "month"}
+              </span>
             )}
           </div>
-          {isYearly && saving && saving > 0 && (
-            <p className="text-xs text-green-600 dark:text-green-400 mt-1 font-medium">
-              Save ₹{saving.toLocaleString("en-IN")} per year
-            </p>
-          )}
-          {plan.planCode === "free_trial" && (
-            <p className="text-xs text-muted-foreground mt-1">
-              {plan.trialDays}-day trial · No credit card required
-            </p>
-          )}
-          {plan.planCode !== "free_trial" && price !== null && price > 0 && (
-            <p className="text-xs text-muted-foreground mt-1">
-              {isYearly
-                ? `₹${price.toLocaleString("en-IN")} billed annually`
-                : "Billed monthly · Cancel anytime"}
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground mt-2 font-medium">
+            {plan.audience}
+          </p>
         </div>
 
-        {/* Audience */}
-        <p className="text-sm text-muted-foreground leading-relaxed border-t pt-3">
-          {plan.audience}
-        </p>
-
-        {/* CTA */}
+        {/* CTA Button */}
         <Button
           onClick={handleCTA}
-          variant={plan.recommended ? "default" : "outline"}
-          className={`w-full ${plan.recommended ? "" : ""}`}
-          data-testid={`button-plan-cta-${plan.planCode}`}
+          disabled={isLoading}
+          className={`w-full gap-2 text-sm font-semibold py-6 rounded-xl transition-all duration-300 mb-8 ${
+            plan.recommended
+              ? "bg-primary text-primary-foreground hover:shadow-lg hover:shadow-primary/20"
+              : "variant-outline border-primary/20 text-primary hover:bg-primary/5"
+          }`}
         >
-          {plan.planCode === "business" ? (
-            <>
-              <PhoneCall className="w-4 h-4 mr-2" />
-              {plan.cta}
-            </>
+          {isLoading ? (
+            <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
           ) : (
             <>
-              {plan.cta}
-              <ArrowRight className="w-4 h-4 ml-2" />
+              {plan.planCode === "business" ? (
+                <>
+                  <PhoneCall className="w-4 h-4" />
+                  {plan.cta}
+                </>
+              ) : (
+                <>
+                  {plan.cta}
+                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                </>
+              )}
             </>
           )}
         </Button>
-      </div>
 
-      {/* Features list */}
-      <div className="px-6 pb-6 flex flex-col gap-2 flex-1">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-          Included
-        </p>
-        <ul className="space-y-2">
-          {plan.features.map((f) => (
-            <li key={f} className="flex items-start gap-2.5 text-sm">
-              <Check
-                className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-                  plan.recommended ? "text-primary" : "text-green-600 dark:text-green-500"
-                }`}
-              />
-              <span>{f}</span>
-            </li>
-          ))}
-        </ul>
-        {plan.notIncluded.length > 0 && (
-          <>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mt-3 mb-1">
-              Not included
+        {/* Features list */}
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+              What's included
             </p>
-            <ul className="space-y-2">
-              {plan.notIncluded.map((f) => (
-                <li key={f} className="flex items-start gap-2.5 text-sm text-muted-foreground">
-                  <X className="w-4 h-4 mt-0.5 flex-shrink-0 text-muted-foreground/60" />
+            <ul className="space-y-3">
+              {plan.features.map((f) => (
+                <li key={f} className="flex items-start gap-3 text-sm">
+                  <Check className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary" />
                   <span>{f}</span>
                 </li>
               ))}
             </ul>
-          </>
-        )}
-      </div>
+          </div>
+
+          {plan.notIncluded.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                Not included
+              </p>
+              <ul className="space-y-3">
+                {plan.notIncluded.map((f) => (
+                  <li key={f} className="flex items-start gap-3 text-sm text-muted-foreground/60">
+                    <X className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </CardContent>
     </div>
   );
 }

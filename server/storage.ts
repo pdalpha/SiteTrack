@@ -8,6 +8,7 @@ import {
   type Contractor, type InsertContractor, contractors,
   type Payroll, type InsertPayroll, payroll,
   type Advance, type InsertAdvance, advances,
+  type Subscription, type InsertSubscription, subscriptions,
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
@@ -22,6 +23,22 @@ const client = createClient({
 // ─── Auto-migration: create new tables if they don't exist ───────────────────
 async function migrate() {
   await client.executeMultiple(`
+  CREATE TABLE IF NOT EXISTS subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    plan_code TEXT NOT NULL DEFAULT 'free_trial',
+    billing_interval TEXT NOT NULL DEFAULT 'monthly',
+    gateway TEXT,
+    gateway_subscription_id TEXT,
+    gateway_customer_id TEXT,
+    status TEXT NOT NULL DEFAULT 'trialing',
+    current_period_start TEXT,
+    current_period_end TEXT,
+    cancel_at_period_end INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS contractors (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -153,6 +170,13 @@ export interface IStorage {
   getAdvances(workerId: number): Promise<Advance[]>;
   getAdvancesByMonth(workerId: number, month: string): Promise<Advance[]>;
   createAdvance(a: InsertAdvance): Promise<Advance>;
+
+  // Subscriptions
+  getSubscription(userId: number): Promise<Subscription | undefined>;
+  getSubscriptionByGatewayId(gatewaySubscriptionId: string): Promise<Subscription | undefined>;
+  createSubscription(data: InsertSubscription): Promise<Subscription>;
+  updateSubscription(id: number, data: Partial<InsertSubscription>): Promise<Subscription | undefined>;
+  upsertUserSubscription(userId: number, data: Partial<InsertSubscription>): Promise<Subscription>;
 
   // Dashboard
   getDashboardStats(siteId?: number): Promise<{
@@ -564,6 +588,53 @@ export class DatabaseStorage implements IStorage {
       totalWorkers,
       monthlyPayroll: monthlyPayrollResult,
     };
+  }
+
+  // ─── Subscriptions ───
+  async getSubscription(userId: number): Promise<Subscription | undefined> {
+    return db.select().from(subscriptions)
+      .where(eq(subscriptions.userId, userId))
+      .orderBy(desc(subscriptions.createdAt))
+      .limit(1)
+      .then(res => res[0]);
+  }
+
+  async getSubscriptionByGatewayId(gatewaySubscriptionId: string): Promise<Subscription | undefined> {
+    return db.select().from(subscriptions)
+      .where(eq(subscriptions.gatewaySubscriptionId, gatewaySubscriptionId))
+      .then(res => res[0]);
+  }
+
+  async createSubscription(data: InsertSubscription): Promise<Subscription> {
+    const now = new Date().toISOString();
+    return db.insert(subscriptions)
+      .values({ ...data, createdAt: now, updatedAt: now } as any)
+      .returning()
+      .then(res => res[0]);
+  }
+
+  async updateSubscription(id: number, data: Partial<InsertSubscription>): Promise<Subscription | undefined> {
+    return db.update(subscriptions)
+      .set({ ...data, updatedAt: new Date().toISOString() } as any)
+      .where(eq(subscriptions.id, id))
+      .returning()
+      .then(res => res[0]);
+  }
+
+  async upsertUserSubscription(userId: number, data: Partial<InsertSubscription>): Promise<Subscription> {
+    const existing = await this.getSubscription(userId);
+    if (existing) {
+      const updated = await this.updateSubscription(existing.id, data);
+      return updated!;
+    } else {
+      return this.createSubscription({
+        userId,
+        planCode: data.planCode ?? "free_trial",
+        billingInterval: data.billingInterval ?? "monthly",
+        status: data.status ?? "trialing",
+        ...data,
+      } as InsertSubscription);
+    }
   }
 }
 
