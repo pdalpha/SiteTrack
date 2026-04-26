@@ -2,7 +2,7 @@ services:
   - type: web
     name: sitetrack
     env: node
-    plan: starter # You can change this to 'free' if you don't need persistent disks, but SQLite requires a disk.
+    plan: free
     buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:
@@ -11,8 +11,4 @@ services:
       - key: SESSION_SECRET
         generateValue: true
       - key: DATABASE_URL
-        value: /data/sqlite.db
-    disk:
-      name: data
-      mountPath: /data
-      sizeGB: 1
+        value: data.db
