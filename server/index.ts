@@ -91,7 +91,6 @@ app.use((req, res, next) => {
     return res.status(status).json({ message });
   });
 
-  log(`Environment: ${process.env.NODE_ENV}`);
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
