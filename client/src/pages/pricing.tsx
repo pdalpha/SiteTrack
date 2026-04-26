@@ -85,7 +85,12 @@ function usePlanCTA(plan: PricingPlan, billingInterval: BillingInterval) {
 
   return { isLoading, handleCTA: async () => {
     if (plan.planCode === "business") {
-      window.open("mailto:sales@sitetrack.app?subject=SiteTrack Business Plan Inquiry", "_blank");
+      // Navigate to a contact/inquiry page or show a contact toast
+      toast({
+        title: "Contact our sales team",
+        description: "Email us at sales@sitetrack.site or WhatsApp us to get a custom quote for the Business plan.",
+        duration: 6000,
+      });
       return;
     }
 
@@ -236,10 +241,11 @@ function PlanCard({
         <Button
           onClick={handleCTA}
           disabled={isLoading}
+          variant={plan.recommended ? "default" : "outline"}
           className={`w-full gap-2 text-sm font-semibold py-6 rounded-xl transition-all duration-300 mb-8 ${
             plan.recommended
-              ? "bg-primary text-primary-foreground hover:shadow-lg hover:shadow-primary/20"
-              : "variant-outline border-primary/20 text-primary hover:bg-primary/5"
+              ? "hover:shadow-lg hover:shadow-primary/20"
+              : "border-2 border-primary text-primary bg-background hover:bg-primary hover:text-primary-foreground"
           }`}
         >
           {isLoading ? (
@@ -254,7 +260,7 @@ function PlanCard({
               ) : (
                 <>
                   {plan.cta}
-                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </>
@@ -310,16 +316,21 @@ function CTAButton({
   size?: "sm" | "default" | "lg" | "icon";
   className?: string;
 }) {
-  const handleCTA = usePlanCTA(plan, billingInterval);
+  const { handleCTA, isLoading } = usePlanCTA(plan, billingInterval);
   return (
     <Button
       onClick={handleCTA}
+      disabled={isLoading}
       variant={plan.recommended ? "default" : "outline"}
       size={size}
       className={className}
       data-testid={`button-compare-cta-${plan.planCode}`}
     >
-      {plan.ctaShort}
+      {isLoading ? (
+        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+      ) : (
+        plan.ctaShort
+      )}
     </Button>
   );
 }
