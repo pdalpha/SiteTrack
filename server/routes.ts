@@ -69,6 +69,11 @@ export async function registerRoutes(
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // ─── Keep-alive ping (public) — used by UptimeRobot / cron to prevent Render cold starts ──
+  app.get("/api/ping", (_req, res) => {
+    res.json({ pong: true, uptime: Math.floor(process.uptime()) + "s" });
+  });
+
   // ─── Contact form (public) ───────────────────────────────────────────────────
   app.post("/api/contact", async (req, res) => {
     try {
