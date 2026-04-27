@@ -3,10 +3,11 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
 import {
     HardHat, Users, TrendingUp, Shield, Clock, BarChart3, Camera, Wallet,
     ArrowRight, CheckCircle2, Menu, X, Star, Building2, Truck, ClipboardList,
-    Smartphone, Globe, ChevronRight, Play
+    Smartphone, Globe, ChevronRight, Play, Video, Loader2
 } from "lucide-react";
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
@@ -211,6 +212,105 @@ function HeroSection() {
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </section>
+    );
+}
+
+// ─── Demo Video Section ───────────────────────────────────────────────────────
+
+const DEMO_STEPS = [
+    {
+        step: "01",
+        title: "Create Your Account",
+        desc: "Sign up in 30 seconds with just your name, email and mobile number. No credit card required.",
+        icon: "👤",
+    },
+    {
+        step: "02",
+        title: "Add Your Sites & Workers",
+        desc: "Create your construction sites, invite supervisors, and add your workforce — contractors and daily wage workers.",
+        icon: "🏗️",
+    },
+    {
+        step: "03",
+        title: "Track Daily Operations",
+        desc: "Mark attendance, log expenses, submit DPRs, and upload site photos — all from your phone or desktop.",
+        icon: "📱",
+    },
+    {
+        step: "04",
+        title: "Get Reports & Insights",
+        desc: "View real-time dashboards, export CSV reports, and make data-driven decisions for your construction business.",
+        icon: "📊",
+    },
+];
+
+function DemoVideoSection() {
+    return (
+        <section className="py-20 bg-muted/30">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-16">
+                    <Badge className="mb-4 bg-primary/10 text-primary border-primary/20">How It Works</Badge>
+                    <h2 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4">
+                        Get Started in 4 Simple Steps
+                    </h2>
+                    <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                        From signup to tracking your first site in under 5 minutes. No training needed.
+                    </p>
+                </div>
+
+                {/* Video placeholder */}
+                <div className="max-w-4xl mx-auto mb-16">
+                    <div className="relative aspect-video rounded-2xl border shadow-xl overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
+                        {/* Play button overlay */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <button className="group flex items-center gap-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-8 py-4 transition-all shadow-lg hover:shadow-xl hover:scale-105">
+                                <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                                    <Play className="w-6 h-6 fill-current ml-1" />
+                                </div>
+                                <div className="text-left">
+                                    <p className="font-semibold text-lg">Watch Demo</p>
+                                    <p className="text-sm text-primary-foreground/80">2-minute overview</p>
+                                </div>
+                            </button>
+                        </div>
+                        {/* Video placeholder text */}
+                        <div className="absolute bottom-4 left-4 right-4 text-center">
+                            <p className="text-xs text-muted-foreground bg-background/80 inline-block px-3 py-1 rounded-full">
+                                📹 Demo video coming soon — shows SiteTrack in action
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Steps */}
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-5xl mx-auto">
+                    {DEMO_STEPS.map((item, idx) => (
+                        <div key={item.step} className="relative">
+                            {/* Connector line */}
+                            {idx < DEMO_STEPS.length - 1 && (
+                                <div className="hidden lg:block absolute top-10 left-full w-full h-0.5 bg-border -translate-x-1/2" style={{ width: 'calc(100% - 2rem)' }} />
+                            )}
+                            <div className="bg-card border rounded-xl p-6 hover:shadow-lg transition-shadow">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <span className="text-3xl">{item.icon}</span>
+                                    <span className="text-4xl font-bold text-primary/20">{item.step}</span>
+                                </div>
+                                <h3 className="font-bold text-lg mb-2">{item.title}</h3>
+                                <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* CTA */}
+                <div className="mt-12 text-center">
+                    <Button size="lg" onClick={() => window.location.href = "/register"} className="gap-2">
+                        Start Your Free Trial <ArrowRight className="w-4 h-4" />
+                    </Button>
+                    <p className="mt-3 text-sm text-muted-foreground">14 days free · No credit card · Setup in 5 minutes</p>
                 </div>
             </div>
         </section>
@@ -450,13 +550,32 @@ function AboutSection() {
 // ─── Contact Section ──────────────────────────────────────────────────────────
 
 function ContactSection() {
+    const [, navigate] = useLocation();
+    const { toast } = useToast();
     const [form, setForm] = useState({ name: "", email: "", mobile: "", message: "" });
     const [submitted, setSubmitted] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // In production, this would call an API endpoint
-        setSubmitted(true);
+        setIsLoading(true);
+        try {
+            const res = await fetch("/api/contact", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(form),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setSubmitted(true);
+            } else {
+                toast({ title: "Error", description: data.error || "Failed to send message", variant: "destructive" });
+            }
+        } catch (err) {
+            toast({ title: "Error", description: "Network error. Please try again.", variant: "destructive" });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -555,8 +674,17 @@ function ContactSection() {
                                                 onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
                                             />
                                         </div>
-                                        <Button type="submit" className="w-full gap-2">
-                                            Send Message <ArrowRight className="w-4 h-4" />
+                                        <Button type="submit" className="w-full gap-2" disabled={isLoading}>
+                                            {isLoading ? (
+                                                <>
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                    Sending...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    Send Message <ArrowRight className="w-4 h-4" />
+                                                </>
+                                            )}
                                         </Button>
                                     </form>
                                 )}
@@ -679,6 +807,7 @@ export default function LandingPage() {
             <LandingNav />
             <main>
                 <HeroSection />
+                <DemoVideoSection />
                 <FeaturesSection />
                 <PricingPreviewSection />
                 <AboutSection />

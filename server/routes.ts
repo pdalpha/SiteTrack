@@ -69,6 +69,56 @@ export async function registerRoutes(
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // ─── Contact form (public) ───────────────────────────────────────────────────
+  app.post("/api/contact", async (req, res) => {
+    try {
+      const { name, email, mobile, message } = req.body;
+
+      if (!name || !email || !message) {
+        return res.status(400).json({ error: "Name, email and message are required" });
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: "Invalid email address" });
+      }
+
+      // Log the contact form submission (in production, you could store in DB or send email)
+      const contactEntry = {
+        id: Date.now(),
+        name,
+        email,
+        mobile: mobile || null,
+        message,
+        timestamp: new Date().toISOString(),
+        source: "landing-page",
+      };
+
+      console.log("📬 New contact form submission:", JSON.stringify(contactEntry, null, 2));
+
+      // Store in a simple JSON file for now (could be upgraded to email sending via SendGrid, Resend, etc.)
+      const contactsFile = path.join(process.cwd(), "contacts.json");
+      let contacts: typeof contactEntry[] = [];
+      if (fs.existsSync(contactsFile)) {
+        try {
+          contacts = JSON.parse(fs.readFileSync(contactsFile, "utf-8"));
+        } catch { }
+      }
+      contacts.push(contactEntry);
+      fs.writeFileSync(contactsFile, JSON.stringify(contacts, null, 2));
+
+      res.json({
+        success: true,
+        message: "Thank you for reaching out! We'll get back to you within 24 hours.",
+        id: contactEntry.id
+      });
+    } catch (error) {
+      console.error("Contact form error:", error);
+      res.status(500).json({ error: "Failed to submit contact form. Please try again." });
+    }
+  });
+
   // ─── Seed data (public, dev only) ────────────────────────────────────────────
   app.post("/api/seed", async (_req, res) => {
     try {
@@ -984,9 +1034,9 @@ export async function registerRoutes(
           if (existing) {
             const newStatus = stripeSub.status === "active" ? "active"
               : stripeSub.status === "trialing" ? "trialing"
-              : stripeSub.status === "past_due" ? "past_due"
-              : stripeSub.status === "canceled" ? "cancelled"
-              : "expired";
+                : stripeSub.status === "past_due" ? "past_due"
+                  : stripeSub.status === "canceled" ? "cancelled"
+                    : "expired";
             await storage.updateSubscription(existing.id, {
               status: newStatus as any,
               currentPeriodStart: new Date(stripeSub.current_period_start * 1000).toISOString(),

@@ -4,7 +4,7 @@ import { Redirect, useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Lock, Zap, Clock } from "lucide-react";
+import { Lock, Zap, Clock, CheckCircle2 } from "lucide-react";
 
 interface ProtectedRouteProps {
   component: React.ComponentType;
@@ -23,16 +23,27 @@ function TrialExpiredWall() {
 
           {/* Text */}
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-foreground">Your free trial has ended</h2>
+            <h2 className="text-2xl font-bold text-foreground">Your 14-day free trial has ended</h2>
             <p className="text-muted-foreground">
-              Your 14-day trial has expired. Upgrade to a paid plan to continue using SiteTrack and access all your data.
+              Upgrade to keep full access to all your sites, workers, and data. Your information is safe and will be restored immediately after you upgrade.
             </p>
           </div>
 
-          {/* Trial details */}
-          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg px-4 py-3">
-            <Clock className="w-4 h-4 shrink-0" />
-            <span>Your data is safe — it will be available immediately after you upgrade.</span>
+          {/* Data reassurance */}
+          <div className="flex items-center justify-center gap-2 text-sm text-green-600 dark:text-green-400 bg-green-500/10 rounded-lg px-4 py-3 border border-green-500/20">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>✅ All your data is preserved — nothing has been deleted</span>
+          </div>
+
+          {/* Benefits of upgrading */}
+          <div className="bg-muted/50 rounded-lg px-4 py-3 space-y-1">
+            <p className="text-sm font-medium text-foreground mb-2">What you get with a paid plan:</p>
+            {["Continue tracking all your sites & workers", "Access attendance, expenses & DPR history", "Export reports & GST invoices", "Priority support from our team"].map((item) => (
+              <div key={item} className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CheckCircle2 className="w-3 h-3 text-primary shrink-0" />
+                {item}
+              </div>
+            ))}
           </div>
 
           {/* CTAs */}
@@ -45,7 +56,7 @@ function TrialExpiredWall() {
               View Plans & Upgrade
             </Button>
             <p className="text-xs text-muted-foreground">
-              Plans start at ₹999/month · Cancel anytime
+              Plans start at ₹999/month · Yearly plans save 2 months free · Cancel anytime
             </p>
           </div>
         </CardContent>
