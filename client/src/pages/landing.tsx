@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
     HardHat, Users, TrendingUp, Shield, Clock, BarChart3, Camera, Wallet,
     ArrowRight, CheckCircle2, Menu, X, Star, Building2, Truck, ClipboardList,
-    Smartphone, Globe, ChevronRight, Play, Video, Loader2
+    Smartphone, Globe, ChevronRight, Play, Video, Loader2, Download
 } from "lucide-react";
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
@@ -311,6 +311,143 @@ function DemoVideoSection() {
                         Start Your Free Trial <ArrowRight className="w-4 h-4" />
                     </Button>
                     <p className="mt-3 text-sm text-muted-foreground">14 days free · No credit card · Setup in 5 minutes</p>
+                </div>
+            </div>
+        </section>
+    );
+}
+
+// ─── Dashboard Preview Section ────────────────────────────────────────────────
+
+function DashboardPreviewSection() {
+    const stats = [
+        { label: "Active Sites", value: "12", change: "+2 this month", icon: Building2, color: "text-primary" },
+        { label: "Total Workers", value: "847", change: "+45 this week", icon: Users, color: "text-blue-600" },
+        { label: "Monthly Attendance", value: "94.2%", change: "+1.8% vs last month", icon: Clock, color: "text-green-600" },
+        { label: "Expense Tracking", value: "₹2.4Cr", change: "This month", icon: Wallet, color: "text-amber-600" },
+    ];
+
+    const recentActivity = [
+        { type: "attendance", site: "Tower A - Mumbai", time: "2 min ago", action: "45 workers marked present" },
+        { type: "expense", site: "Site B - Pune", time: "15 min ago", action: "₹1,25,000水泥 Cement payment" },
+        { type: "dpr", site: "Villa Project - Bangalore", time: "1 hour ago", action: "Daily progress report submitted" },
+        { type: "payroll", site: "All Sites", time: "2 hours ago", action: "Monthly payroll generated" },
+    ];
+
+    return (
+        <section id="dashboard-preview" className="py-20 bg-background">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-16">
+                    <Badge variant="secondary" className="mb-4">📊 Real Dashboard</Badge>
+                    <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+                        Powerful Dashboard with Real-Time KPIs
+                    </h2>
+                    <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                        Get instant visibility into all your construction sites. Track attendance, expenses,
+                        progress reports, and worker payments — all in one place.
+                    </p>
+                </div>
+
+                {/* Dashboard Preview Card */}
+                <Card className="shadow-2xl border-0 overflow-hidden">
+                    <div className="bg-gradient-to-r from-primary/20 via-primary/10 to-transparent p-4 border-b">
+                        <div className="flex items-center gap-2">
+                            <div className="flex gap-1.5">
+                                <div className="w-3 h-3 rounded-full bg-red-500" />
+                                <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                                <div className="w-3 h-3 rounded-full bg-green-500" />
+                            </div>
+                            <span className="text-sm text-muted-foreground ml-2">SiteTrack Dashboard</span>
+                        </div>
+                    </div>
+
+                    <CardContent className="p-0">
+                        <div className="grid lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x">
+                            {/* Main Stats */}
+                            <div className="p-6 lg:col-span-2 space-y-6">
+                                <h3 className="text-lg font-semibold">📈 Overview</h3>
+                                <div className="grid sm:grid-cols-2 gap-4">
+                                    {stats.map((stat) => (
+                                        <div key={stat.label} className="bg-muted/50 rounded-lg p-4">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className={`text-xl font-bold ${stat.color}`}>{stat.value}</span>
+                                                <stat.icon className={`w-5 h-5 ${stat.color}`} />
+                                            </div>
+                                            <p className="text-sm font-medium">{stat.label}</p>
+                                            <p className="text-xs text-muted-foreground">{stat.change}</p>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Mini Chart Placeholder */}
+                                <div className="bg-muted/50 rounded-lg p-4">
+                                    <div className="flex items-end justify-between h-24 gap-2">
+                                        {[40, 65, 45, 80, 55, 90, 70, 85, 60, 95, 75, 88].map((h, i) => (
+                                            <div
+                                                key={i}
+                                                className="flex-1 bg-primary/40 rounded-t transition-all hover:bg-primary/60"
+                                                style={{ height: `${h}%` }}
+                                            />
+                                        ))}
+                                    </div>
+                                    <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                                        <span>Jan</span>
+                                        <span>Feb</span>
+                                        <span>Mar</span>
+                                        <span>Apr</span>
+                                        <span>May</span>
+                                        <span>Jun</span>
+                                    </div>
+                                    <p className="text-center text-sm text-muted-foreground mt-2">Monthly Attendance Trend</p>
+                                </div>
+                            </div>
+
+                            {/* Sidebar - Recent Activity */}
+                            <div className="p-6 bg-muted/30">
+                                <h3 className="text-lg font-semibold mb-4">⚡ Recent Activity</h3>
+                                <div className="space-y-4">
+                                    {recentActivity.map((item, idx) => (
+                                        <div key={idx} className="flex gap-3">
+                                            <div className="shrink-0 w-2 h-2 mt-2 rounded-full bg-primary" />
+                                            <div>
+                                                <p className="text-sm font-medium">{item.site}</p>
+                                                <p className="text-xs text-muted-foreground">{item.action}</p>
+                                                <p className="text-xs text-muted-foreground/70 mt-1">{item.time}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <Button variant="outline" className="w-full mt-6" onClick={() => window.location.href = "/register"}>
+                                    See Full Dashboard →
+                                </Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Feature highlights below the dashboard */}
+                <div className="grid sm:grid-cols-3 gap-8 mt-12">
+                    <div className="text-center">
+                        <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
+                            <BarChart3 className="w-6 h-6 text-primary" />
+                        </div>
+                        <h4 className="font-semibold mb-2">Real-Time Analytics</h4>
+                        <p className="text-sm text-muted-foreground">Watch your KPIs update in real-time as workers check in and expenses are logged.</p>
+                    </div>
+                    <div className="text-center">
+                        <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
+                            <Smartphone className="w-6 h-6 text-primary" />
+                        </div>
+                        <h4 className="font-semibold mb-2">Mobile-Friendly</h4>
+                        <p className="text-sm text-muted-foreground">Access your dashboard from any device. Perfect for on-site managers and owners on the go.</p>
+                    </div>
+                    <div className="text-center">
+                        <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-4">
+                            <Download className="w-6 h-6 text-primary" />
+                        </div>
+                        <h4 className="font-semibold mb-2">Export Reports</h4>
+                        <p className="text-sm text-muted-foreground">Generate GST invoices, attendance reports, and expense summaries with one click.</p>
+                    </div>
                 </div>
             </div>
         </section>
@@ -779,9 +916,9 @@ function LandingFooter() {
                     <div>
                         <h4 className="font-semibold mb-4">Legal</h4>
                         <ul className="space-y-2 text-sm text-muted-foreground">
-                            <li><a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a></li>
-                            <li><a href="#" className="hover:text-foreground transition-colors">Terms of Service</a></li>
-                            <li><a href="#" className="hover:text-foreground transition-colors">Refund Policy</a></li>
+                            <li><Link href="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</Link></li>
+                            <li><Link href="/terms-of-service" className="hover:text-foreground transition-colors">Terms of Service</Link></li>
+                            <li><Link href="/refund-policy" className="hover:text-foreground transition-colors">Refund Policy</Link></li>
                         </ul>
                     </div>
                 </div>
@@ -808,6 +945,7 @@ export default function LandingPage() {
             <main>
                 <HeroSection />
                 <DemoVideoSection />
+                <DashboardPreviewSection />
                 <FeaturesSection />
                 <PricingPreviewSection />
                 <AboutSection />

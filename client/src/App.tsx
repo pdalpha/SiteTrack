@@ -34,6 +34,9 @@ import SubscriptionSuccess from "@/pages/subscription-success";
 import NotFound from "@/pages/not-found";
 import { useAuth } from "@/hooks/use-auth";
 import LandingPage from "@/pages/landing";
+import PrivacyPolicyPage from "@/pages/privacy-policy";
+import TermsOfServicePage from "@/pages/terms-of-service";
+import RefundPolicyPage from "@/pages/refund-policy";
 
 function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
@@ -121,6 +124,9 @@ function AppRouter() {
       <Route path="/login" component={LoginPage} />
       <Route path="/register" component={RegisterPage} />
       <Route path="/pricing" component={PricingPage} />
+      <Route path="/privacy-policy" component={PrivacyPolicyPage} />
+      <Route path="/terms-of-service" component={TermsOfServicePage} />
+      <Route path="/refund-policy" component={RefundPolicyPage} />
 
       {/* Protected routes - redirect to login if not authenticated */}
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
@@ -156,6 +162,9 @@ function AppLayout() {
         <Route path="/login">{() => <LoginPage />}</Route>
         <Route path="/register">{() => <RegisterPage />}</Route>
         <Route path="/pricing">{() => <PricingPage />}</Route>
+        <Route path="/privacy-policy">{() => <PrivacyPolicyPage />}</Route>
+        <Route path="/terms-of-service">{() => <TermsOfServicePage />}</Route>
+        <Route path="/refund-policy">{() => <RefundPolicyPage />}</Route>
 
         {/* All other routes use the sidebar layout */}
         <Route>
