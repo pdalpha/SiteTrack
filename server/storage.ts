@@ -129,6 +129,56 @@ try {
 } catch {
   // ignore
 }
+
+// ─── Multi-tenancy: add company_id to every data table + backfill ───
+const tenantTables: Array<{ name: string; backfill: string }> = [
+  {
+    name: "sites",
+    // Backfill from creator's company
+    backfill: `UPDATE sites SET company_id = (SELECT company_id FROM users WHERE users.id = sites.created_by) WHERE company_id IS NULL`,
+  },
+  {
+    name: "contractors",
+    backfill: `UPDATE contractors SET company_id = (SELECT company_id FROM users WHERE users.id = contractors.user_id) WHERE company_id IS NULL`,
+  },
+  {
+    name: "workers",
+    // Backfill via site → users
+    backfill: `UPDATE workers SET company_id = (SELECT s.company_id FROM sites s WHERE s.id = workers.site_id) WHERE company_id IS NULL AND site_id IS NOT NULL`,
+  },
+  {
+    name: "attendance",
+    backfill: `UPDATE attendance SET company_id = (SELECT s.company_id FROM sites s WHERE s.id = attendance.site_id) WHERE company_id IS NULL`,
+  },
+  {
+    name: "dpr",
+    backfill: `UPDATE dpr SET company_id = (SELECT s.company_id FROM sites s WHERE s.id = dpr.site_id) WHERE company_id IS NULL`,
+  },
+  {
+    name: "expenses",
+    backfill: `UPDATE expenses SET company_id = (SELECT s.company_id FROM sites s WHERE s.id = expenses.site_id) WHERE company_id IS NULL`,
+  },
+  {
+    name: "payroll",
+    backfill: `UPDATE payroll SET company_id = (SELECT s.company_id FROM sites s WHERE s.id = payroll.site_id) WHERE company_id IS NULL`,
+  },
+  {
+    name: "advances",
+    backfill: `UPDATE advances SET company_id = (SELECT w.company_id FROM workers w WHERE w.id = advances.worker_id) WHERE company_id IS NULL`,
+  },
+];
+for (const t of tenantTables) {
+  try {
+    await client.executeMultiple(`ALTER TABLE ${t.name} ADD COLUMN company_id INTEGER`);
+  } catch {
+    // already exists
+  }
+  try {
+    await client.executeMultiple(t.backfill);
+  } catch (e) {
+    console.error(`Backfill failed for ${t.name}:`, e);
+  }
+}
 }
 migrate().catch(console.error);
 
@@ -143,20 +193,20 @@ export interface IStorage {
   updateUser(id: number, data: Partial<InsertUser>): Promise<User | undefined>;
 
   // Sites
-  getSites(userId: number): Promise<Site[]>;
+  getSites(companyId: number): Promise<Site[]>;
   getSite(id: number): Promise<Site | undefined>;
   createSite(site: InsertSite): Promise<Site>;
   updateSite(id: number, data: Partial<InsertSite>): Promise<Site | undefined>;
   deleteSite(id: number): Promise<void>;
 
   // Contractors
-  getContractors(userId: number, status?: string): Promise<Contractor[]>;
+  getContractors(companyId: number, status?: string): Promise<Contractor[]>;
   getContractor(id: number): Promise<Contractor | undefined>;
   createContractor(c: InsertContractor): Promise<Contractor>;
   updateContractor(id: number, data: Partial<InsertContractor>): Promise<Contractor | undefined>;
 
   // Workers
-  getWorkers(siteId?: number, status?: string): Promise<Worker[]>;
+  getWorkers(companyId: number, siteId?: number, status?: string): Promise<Worker[]>;
   getWorker(id: number): Promise<Worker | undefined>;
   createWorker(w: InsertWorker): Promise<Worker>;
   updateWorker(id: number, data: Partial<InsertWorker>): Promise<Worker | undefined>;
@@ -246,8 +296,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ─── Sites ───
-  async getSites(userId: number): Promise<Site[]> {
-    return db.select().from(sites).where(eq(sites.createdBy, userId));
+  async getSites(companyId: number): Promise<Site[]> {
+    // Filter by companyId (multi-tenancy). Falls back to createdBy if companyId is null on legacy rows.
+    return db.select().from(sites).where(
+      sql`(${(sites as any).companyId} = ${companyId}) OR (${(sites as any).companyId} IS NULL AND ${sites.createdBy} = ${companyId})`
+    );
   }
   async getSite(id: number): Promise<Site | undefined> {
     return db.select().from(sites).where(eq(sites.id, id)).then(res => res[0]);
@@ -263,8 +316,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ─── Contractors ───
-  async getContractors(userId: number, status?: string): Promise<Contractor[]> {
-    const conditions: any[] = [eq((contractors as any).userId, userId)];
+  async getContractors(companyId: number, status?: string): Promise<Contractor[]> {
+    // Filter by companyId (multi-tenancy). Fall back to userId for legacy rows where companyId not set.
+    const tenancy = sql`((${(contractors as any).companyId} = ${companyId}) OR (${(contractors as any).companyId} IS NULL AND ${(contractors as any).userId} = ${companyId}))`;
+    const conditions: any[] = [tenancy];
     if (status && status !== "all") conditions.push(eq(contractors.status, status as any));
     return db.select().from(contractors).where(and(...conditions));
   }
@@ -282,15 +337,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ─── Workers ───
-  async getWorkers(siteId?: number, status?: string): Promise<Worker[]> {
-    let query = db.select().from(workers);
-    const conditions = [];
+  async getWorkers(companyId: number, siteId?: number, status?: string): Promise<Worker[]> {
+    // Always filter by companyId (multi-tenancy guard). Legacy rows with NULL companyId will not appear.
+    const conditions: any[] = [eq((workers as any).companyId, companyId)];
     if (siteId) conditions.push(eq(workers.siteId, siteId));
     if (status && status !== "all") conditions.push(eq(workers.status, status as any));
-    if (conditions.length > 0) {
-      return (query as any).where(and(...conditions));
-    }
-    return query;
+    return db.select().from(workers).where(and(...conditions));
   }
   async getWorker(id: number): Promise<Worker | undefined> {
     return db.select().from(workers).where(eq(workers.id, id)).then(res => res[0]);

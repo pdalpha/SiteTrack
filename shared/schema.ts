@@ -32,6 +32,8 @@ export const sites = sqliteTable("sites", {
   startDate: text("start_date"),
   status: text("status", { enum: ["active", "completed", "paused"] }).notNull().default("active"),
   createdBy: integer("created_by").notNull(),
+  /** Tenancy: company that owns this site (= owner admin's user.id). */
+  companyId: integer("company_id"),
   createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
 });
 
@@ -43,6 +45,8 @@ export type Site = typeof sites.$inferSelect;
 export const contractors = sqliteTable("contractors", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userId: integer("user_id").notNull(),
+  /** Tenancy: company that owns this contractor record. */
+  companyId: integer("company_id"),
   name: text("name").notNull(),
   companyName: text("company_name"),
   phone: text("phone"),
@@ -62,6 +66,8 @@ export type Contractor = typeof contractors.$inferSelect;
 // ─── Workers ───
 export const workers = sqliteTable("workers", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  /** Tenancy: company that owns this worker record. */
+  companyId: integer("company_id"),
   name: text("name").notNull(),
   phone: text("phone"),
   trade: text("trade"),
@@ -83,6 +89,8 @@ export type Worker = typeof workers.$inferSelect;
 // ─── Attendance ───
 export const attendance = sqliteTable("attendance", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  /** Tenancy: company that owns this attendance row. */
+  companyId: integer("company_id"),
   siteId: integer("site_id").notNull(),
   workerId: integer("worker_id"),          // nullable — links to workers table
   workerName: text("worker_name").notNull(),
@@ -102,6 +110,8 @@ export type Attendance = typeof attendance.$inferSelect;
 // ─── DPR (Daily Progress Report) ───
 export const dpr = sqliteTable("dpr", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  /** Tenancy: company that owns this DPR. */
+  companyId: integer("company_id"),
   siteId: integer("site_id").notNull(),
   date: text("date").notNull(),
   workDone: text("work_done").notNull(),
@@ -125,6 +135,8 @@ export type Dpr = typeof dpr.$inferSelect;
 // ─── Expenses ───
 export const expenses = sqliteTable("expenses", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  /** Tenancy: company that owns this expense. */
+  companyId: integer("company_id"),
   siteId: integer("site_id").notNull(),
   category: text("category", { enum: ["labour", "material", "equipment", "transport", "food", "misc"] }).notNull(),
   amount: real("amount").notNull(),
@@ -144,6 +156,8 @@ export type Expense = typeof expenses.$inferSelect;
 // ─── Payroll ───
 export const payroll = sqliteTable("payroll", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  /** Tenancy: company that owns this payroll row. */
+  companyId: integer("company_id"),
   workerId: integer("worker_id").notNull(),
   siteId: integer("site_id").notNull(),
   month: text("month").notNull(),             // YYYY-MM
@@ -166,6 +180,8 @@ export type Payroll = typeof payroll.$inferSelect;
 // ─── Advances ───
 export const advances = sqliteTable("advances", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  /** Tenancy: company that owns this advance. */
+  companyId: integer("company_id"),
   workerId: integer("worker_id").notNull(),
   amount: real("amount").notNull(),
   date: text("date").notNull(),

@@ -279,8 +279,9 @@ export async function registerRoutes(
 
   // ─── Sites ───────────────────────────────────────────────────────────────────
   app.get("/api/sites", requireAuth, async (req, res) => {
-    const userId = (req.user as any).id as number;
-    const all = await storage.getSites(userId);
+    const me = req.user as any;
+    const companyId = me.companyId ?? me.id;
+    const all = await storage.getSites(companyId);
     res.json(all);
   });
 
@@ -293,8 +294,10 @@ export async function registerRoutes(
 
   app.post("/api/sites", requireAuth, async (req, res) => {
     try {
-      const userId = (req.user as any).id as number;
-      const data = insertSiteSchema.parse({ ...req.body, createdBy: userId });
+      const me = req.user as any;
+      const userId = me.id as number;
+      const companyId = me.companyId ?? userId;
+      const data = insertSiteSchema.parse({ ...req.body, createdBy: userId, companyId });
       const site = await storage.createSite(data);
       res.status(201).json(site);
     } catch (e: any) {
@@ -737,9 +740,11 @@ export async function registerRoutes(
   // ─── Workers ─────────────────────────────────────────────────────────────────
   app.get("/api/workers", requireAuth, async (req, res) => {
     try {
+      const me = req.user as any;
+      const companyId = me.companyId ?? me.id;
       const siteId = req.query.site_id ? Number(req.query.site_id) : undefined;
       const status = req.query.status ? String(req.query.status) : undefined;
-      const rows = await storage.getWorkers(siteId, status);
+      const rows = await storage.getWorkers(companyId, siteId, status);
       res.json(rows);
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
@@ -752,7 +757,9 @@ export async function registerRoutes(
 
   app.post("/api/workers", requireAuth, async (req, res) => {
     try {
-      const data = insertWorkerSchema.parse(req.body);
+      const me = req.user as any;
+      const companyId = me.companyId ?? me.id;
+      const data = insertWorkerSchema.parse({ ...req.body, companyId });
       const worker = await storage.createWorker(data);
       res.status(201).json(worker);
     } catch (e: any) { res.status(400).json({ error: e.message }); }
@@ -769,9 +776,10 @@ export async function registerRoutes(
   // ─── Contractors ──────────────────────────────────────────────────────────────
   app.get("/api/contractors", requireAuth, async (req, res) => {
     try {
-      const userId = (req.user as any).id as number;
+      const me = req.user as any;
+      const companyId = me.companyId ?? me.id;
       const status = req.query.status ? String(req.query.status) : undefined;
-      const rows = await storage.getContractors(userId, status);
+      const rows = await storage.getContractors(companyId, status);
       res.json(rows);
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
@@ -784,8 +792,10 @@ export async function registerRoutes(
 
   app.post("/api/contractors", requireAuth, async (req, res) => {
     try {
-      const userId = (req.user as any).id as number;
-      const data = insertContractorSchema.parse({ ...req.body, userId });
+      const me = req.user as any;
+      const userId = me.id as number;
+      const companyId = me.companyId ?? userId;
+      const data = insertContractorSchema.parse({ ...req.body, userId, companyId });
       const c = await storage.createContractor(data);
       res.status(201).json(c);
     } catch (e: any) { res.status(400).json({ error: e.message }); }
