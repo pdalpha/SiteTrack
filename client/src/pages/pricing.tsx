@@ -338,14 +338,21 @@ function PlanCard({
               )}
             </div>
           ) : (
-            <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-bold tracking-tight">
-                {formatPrice(displayPrice, billingInterval)}
-              </span>
-              {displayPrice !== null && displayPrice !== 0 && (
-                <span className="text-muted-foreground font-medium">
-                  /{isYearly ? "year" : "month"}
+            <div className="space-y-0.5">
+              <div className="flex items-baseline gap-1">
+                <span className="text-4xl font-bold tracking-tight">
+                  {formatPrice(displayPrice, billingInterval)}
                 </span>
+                {displayPrice !== null && displayPrice !== 0 && (
+                  <span className="text-muted-foreground font-medium">
+                    /month
+                  </span>
+                )}
+              </div>
+              {isYearly && displayPrice !== null && displayPrice !== 0 && origPrice && (
+                <p className="text-xs text-muted-foreground">
+                  ₹{origPrice.toLocaleString("en-IN")} billed yearly
+                </p>
               )}
             </div>
           )}
@@ -415,6 +422,76 @@ function PlanCard({
               </ul>
             </div>
           )}
+        </div>
+      </CardContent>
+    </div>
+  );
+}
+
+// ─── Contact Sales Card (replaces Business plan in the pricing grid) ───────────
+function ContactSalesCard({ billingInterval }: { billingInterval: BillingInterval }) {
+  const { toast } = useToast();
+  const businessPlan = PLANS.find((p) => p.planCode === "business");
+
+  return (
+    <div className="relative flex flex-col rounded-2xl border border-border bg-card shadow-sm hover:shadow-md transition-shadow">
+      <CardHeader className="p-8 pb-0">
+        <div className="flex items-center justify-between mb-4">
+          <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+            <Building2 className="w-5 h-5" />
+          </div>
+          <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 border-blue-500/20 font-medium">
+            Custom
+          </Badge>
+        </div>
+        <div>
+          <h3 className="text-xl font-bold text-foreground">Business</h3>
+          <p className="text-sm text-muted-foreground mt-1 min-h-[40px]">
+            Enterprise-grade for large contractors & real-estate developers
+          </p>
+        </div>
+      </CardHeader>
+
+      <CardContent className="p-8 flex-1 flex flex-col">
+        <div className="mb-8">
+          <div className="flex items-baseline gap-1">
+            <span className="text-4xl font-bold tracking-tight">Custom</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2 font-medium">
+            Tailored to your team size, sites, and compliance needs.
+          </p>
+        </div>
+
+        <Button
+          onClick={() => {
+            toast({
+              title: "Contact our sales team",
+              description: "Email us at sales@sitetrack.site or WhatsApp us for a custom quote.",
+              duration: 6000,
+            });
+            window.open("mailto:sales@sitetrack.site?subject=SiteTrack Business Plan Inquiry", "_blank");
+          }}
+          variant="outline"
+          className="w-full gap-2 text-sm font-semibold py-6 rounded-xl border-2 border-primary text-primary bg-background hover:bg-primary hover:text-primary-foreground transition-all duration-300 mb-8"
+        >
+          <PhoneCall className="w-4 h-4" />
+          Contact Sales
+        </Button>
+
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+              What's included
+            </p>
+            <ul className="space-y-3">
+              {(businessPlan?.features ?? []).map((f) => (
+                <li key={f} className="flex items-start gap-3 text-sm">
+                  <Check className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary" />
+                  <span>{f}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </CardContent>
     </div>
@@ -657,9 +734,10 @@ export default function PricingPage() {
       {/* ── Plan Cards ── */}
       <section className="px-4 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mt-2">
-          {PLANS.map((plan) => (
+          {PLANS.filter((p) => p.planCode !== "business").map((plan) => (
             <PlanCard key={plan.planCode} plan={plan} billingInterval={billingInterval} isOfferActive={isOfferActive} />
           ))}
+          <ContactSalesCard billingInterval={billingInterval} />
         </div>
 
         {/* Trust note */}
