@@ -27,10 +27,7 @@ export default function LoginPage() {
           navigate("/");
         },
         onError: (err: Error) => {
-          const msg = err.message.includes("401")
-            ? "Invalid email or password"
-            : err.message;
-          toast({ title: "Login failed", description: msg, variant: "destructive" });
+          toast({ title: "Login failed", description: err.message, variant: "destructive" });
         },
       }
     );
@@ -70,7 +67,13 @@ export default function LoginPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <span className="text-xs text-muted-foreground">
+                    Forgot password? Contact{" "}
+                    <a href="mailto:support@sitetrack.site" className="text-primary hover:underline">support</a>
+                  </span>
+                </div>
                 <div className="relative">
                   <Input
                     id="password"

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { HardHat, Eye, EyeOff, CheckCircle2, ArrowRight } from "lucide-react";
+import { HardHat, Eye, EyeOff, CheckCircle2, ArrowRight, Shield } from "lucide-react";
 
 const TRIAL_FEATURES = [
   "Unlimited sites during trial",
@@ -16,6 +16,20 @@ const TRIAL_FEATURES = [
   "Photo uploads & reporting",
   "No credit card required",
 ];
+
+function getPasswordStrength(pw: string): { score: number; label: string; color: string } {
+  if (!pw) return { score: 0, label: "", color: "" };
+  let score = 0;
+  if (pw.length >= 6) score++;
+  if (pw.length >= 10) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  if (score <= 1) return { score, label: "Weak", color: "bg-destructive" };
+  if (score <= 2) return { score, label: "Fair", color: "bg-orange-400" };
+  if (score <= 3) return { score, label: "Good", color: "bg-yellow-400" };
+  return { score, label: "Strong", color: "bg-green-500" };
+}
 
 export default function RegisterPage() {
   const [, navigate] = useLocation();
@@ -31,7 +45,9 @@ export default function RegisterPage() {
     confirmPassword: "",
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const pwStrength = getPasswordStrength(form.password);
 
   const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -71,7 +87,7 @@ export default function RegisterPage() {
             title: "Welcome to SiteTrack! 🎉",
             description: "Your 14-day free trial has started. Explore all features now.",
           });
-          navigate("/");
+          navigate("/dashboard");
         },
         onError: (err: Error) => {
           if (err.message.includes("already exists")) {
@@ -119,7 +135,7 @@ export default function RegisterPage() {
         </div>
 
         <p className="text-primary-foreground/60 text-sm">
-          © 2025 SiteTrack · Construction Intelligence Platform
+          © 2026 SiteTrack · Construction Intelligence Platform
         </p>
       </div>
 
@@ -239,19 +255,51 @@ export default function RegisterPage() {
                   {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
                 </div>
 
+                {/* Password strength */}
+                {form.password && (
+                  <div className="space-y-1">
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div
+                          key={i}
+                          className={`h-1 flex-1 rounded-full transition-all ${
+                            i <= pwStrength.score ? pwStrength.color : "bg-muted"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    {pwStrength.label && (
+                      <p className="text-xs text-muted-foreground">
+                        Password strength: <span className="font-medium">{pwStrength.label}</span>
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {/* Confirm Password */}
                 <div className="space-y-1.5">
                   <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    placeholder="Re-enter your password"
-                    value={form.confirmPassword}
-                    onChange={set("confirmPassword")}
-                    autoComplete="new-password"
-                    disabled={registerMutation.isPending}
-                    data-testid="input-confirm-password"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Re-enter your password"
+                      value={form.confirmPassword}
+                      onChange={set("confirmPassword")}
+                      autoComplete="new-password"
+                      disabled={registerMutation.isPending}
+                      data-testid="input-confirm-password"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+                      tabIndex={-1}
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                   {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword}</p>}
                 </div>
 
@@ -271,11 +319,16 @@ export default function RegisterPage() {
                   )}
                 </Button>
 
-                <p className="text-center text-xs text-muted-foreground">
-                  By signing up, you agree to our Terms of Service.
-                  <br />
-                  No credit card required for the trial.
-                </p>
+                <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg">
+                  <Shield className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                  <p className="text-xs text-muted-foreground">
+                    By signing up you agree to our{" "}
+                    <button type="button" onClick={() => navigate("/terms-of-service")} className="text-primary underline underline-offset-2">Terms of Service</button>
+                    {" "}and{" "}
+                    <button type="button" onClick={() => navigate("/privacy-policy")} className="text-primary underline underline-offset-2">Privacy Policy</button>.
+                    No credit card required.
+                  </p>
+                </div>
               </form>
             </CardContent>
           </Card>

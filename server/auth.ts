@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import type { Express, Request, Response, NextFunction } from "express";
 import session from "express-session";
-import MemoryStore from "memorystore";
+import ConnectSqlite3 from "connect-sqlite3";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { storage } from "./storage";
@@ -46,7 +46,8 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 // ─── Setup auth on Express app ─────────────────────────────────────────────────
 export async function setupAuth(app: Express) {
-  const MStore = MemoryStore(session);
+  const SQLiteStore = ConnectSqlite3(session);
+  const isProd = process.env.NODE_ENV === "production";
 
   app.use(
     session({
@@ -56,9 +57,10 @@ export async function setupAuth(app: Express) {
       cookie: {
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         httpOnly: true,
-        sameSite: "lax",
+        secure: isProd,          // send only over HTTPS in production
+        sameSite: isProd ? "none" : "lax", // cross-site for prod behind CDN/proxy
       },
-      store: new MStore({ checkPeriod: 86_400_000 }), // prune expired entries daily
+      store: new SQLiteStore({ db: "sessions.db", dir: ".", table: "sessions" }) as any,
     })
   );
 
@@ -159,8 +161,7 @@ export async function setupAuth(app: Express) {
       const trialEnd = new Date();
       trialEnd.setDate(trialEnd.getDate() + 14);
 
-      await storage.upsertSubscription({
-        userId: user.id,
+      await storage.upsertUserSubscription(user.id, {
         planCode: "free_trial",
         billingInterval: "monthly",
         gateway: null,

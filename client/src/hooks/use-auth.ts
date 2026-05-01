@@ -27,11 +27,15 @@ export function useAuth() {
 export function useLogin() {
   return useMutation({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
-      const res = await apiRequest("api/auth/login", {
+      const res = await fetch("./api/auth/login", {
         method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      return res.json();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Invalid email or password");
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
@@ -54,15 +58,15 @@ export function useRegister() {
       mobile: string;
       password: string;
     }) => {
-      const res = await apiRequest("api/auth/register", {
+      const res = await fetch("./api/auth/register", {
         method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, companyName, email, mobile, password }),
       });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Registration failed");
-      }
-      return res.json();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Registration failed");
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
@@ -84,11 +88,15 @@ export function useLogout() {
 export function useChangePassword() {
   return useMutation({
     mutationFn: async ({ currentPassword, newPassword }: { currentPassword: string; newPassword: string }) => {
-      const res = await apiRequest("api/auth/change-password", {
+      const res = await fetch("./api/auth/change-password", {
         method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ currentPassword, newPassword }),
       });
-      return res.json();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to change password");
+      return data;
     },
   });
 }

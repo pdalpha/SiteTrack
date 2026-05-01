@@ -47,9 +47,11 @@
     "@tanstack/react-query": "^5.60.5",
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.20",
+    "better-sqlite3": "^12.9.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "connect-sqlite3": "^0.9.16",
     "date-fns": "^3.6.0",
     "drizzle-orm": "^0.39.3",
     "drizzle-zod": "^0.7.0",
@@ -91,7 +93,8 @@
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.12",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/connect-sqlite3": "^0.9.6",
     "@types/express": "^5.0.0",
     "@types/express-session": "^1.18.0",
     "@types/node": "20.19.27",

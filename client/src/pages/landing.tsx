@@ -155,13 +155,13 @@ function HeroSection() {
                             className="w-full sm:w-auto gap-2 text-base px-8 py-6"
                             onClick={() => navigate("/pricing")}
                         >
-                            <Play className="w-4 h-4" />
                             View Pricing
+                            <ChevronRight className="w-4 h-4" />
                         </Button>
                     </div>
 
                     {/* Feature bullets */}
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-sm text-muted-foreground">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-xl mx-auto text-sm text-muted-foreground">
                         {HERO_FEATURES.map((f) => (
                             <div key={f} className="flex items-center gap-2">
                                 <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
@@ -248,6 +248,7 @@ const DEMO_STEPS = [
 ];
 
 function DemoVideoSection() {
+    const [, navigate] = useLocation();
     return (
         <section className="py-20 bg-muted/30">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -264,23 +265,18 @@ function DemoVideoSection() {
                 {/* Video placeholder */}
                 <div className="max-w-4xl mx-auto mb-16">
                     <div className="relative aspect-video rounded-2xl border shadow-xl overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
-                        {/* Play button overlay */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <button className="group flex items-center gap-4 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-8 py-4 transition-all shadow-lg hover:shadow-xl hover:scale-105">
-                                <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                                    <Play className="w-6 h-6 fill-current ml-1" />
-                                </div>
-                                <div className="text-left">
-                                    <p className="font-semibold text-lg">Watch Demo</p>
-                                    <p className="text-sm text-primary-foreground/80">2-minute overview</p>
-                                </div>
-                            </button>
-                        </div>
-                        {/* Video placeholder text */}
-                        <div className="absolute bottom-4 left-4 right-4 text-center">
-                            <p className="text-xs text-muted-foreground bg-background/80 inline-block px-3 py-1 rounded-full">
-                                📹 Demo video coming soon — shows SiteTrack in action
-                            </p>
+                        {/* Coming soon overlay */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+                            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
+                                <Video className="w-8 h-8 text-primary" />
+                            </div>
+                            <div className="text-center">
+                                <p className="font-semibold text-lg text-foreground">Demo Video Coming Soon</p>
+                                <p className="text-sm text-muted-foreground mt-1">See SiteTrack in action — full walkthrough</p>
+                            </div>
+                            <Button size="sm" variant="outline" onClick={() => navigate("/register")} className="gap-2">
+                                Try it yourself for free <ArrowRight className="w-3 h-3" />
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -307,7 +303,7 @@ function DemoVideoSection() {
 
                 {/* CTA */}
                 <div className="mt-12 text-center">
-                    <Button size="lg" onClick={() => window.location.href = "/register"} className="gap-2">
+                    <Button size="lg" onClick={() => navigate("/register")} className="gap-2">
                         Start Your Free Trial <ArrowRight className="w-4 h-4" />
                     </Button>
                     <p className="mt-3 text-sm text-muted-foreground">14 days free · No credit card · Setup in 5 minutes</p>
@@ -320,6 +316,7 @@ function DemoVideoSection() {
 // ─── Dashboard Preview Section ────────────────────────────────────────────────
 
 function DashboardPreviewSection() {
+    const [, navigate] = useLocation();
     const stats = [
         { label: "Active Sites", value: "12", change: "+2 this month", icon: Building2, color: "text-primary" },
         { label: "Total Workers", value: "847", change: "+45 this week", icon: Users, color: "text-blue-600" },
@@ -329,7 +326,7 @@ function DashboardPreviewSection() {
 
     const recentActivity = [
         { type: "attendance", site: "Tower A - Mumbai", time: "2 min ago", action: "45 workers marked present" },
-        { type: "expense", site: "Site B - Pune", time: "15 min ago", action: "₹1,25,000水泥 Cement payment" },
+        { type: "expense", site: "Site B - Pune", time: "15 min ago", action: "₹1,25,000 Cement payment" },
         { type: "dpr", site: "Villa Project - Bangalore", time: "1 hour ago", action: "Daily progress report submitted" },
         { type: "payroll", site: "All Sites", time: "2 hours ago", action: "Monthly payroll generated" },
     ];
@@ -417,7 +414,7 @@ function DashboardPreviewSection() {
                                         </div>
                                     ))}
                                 </div>
-                                <Button variant="outline" className="w-full mt-6" onClick={() => window.location.href = "/register"}>
+                                <Button variant="outline" className="w-full mt-6" onClick={() => navigate("/register")}>
                                     See Full Dashboard →
                                 </Button>
                             </div>
@@ -731,9 +728,9 @@ function ContactSection() {
 
                         <div className="space-y-6">
                             {[
-                                { icon: "📧", label: "Email", value: "support@sitetrack.app" },
+                                { icon: "📧", label: "Email", value: "support@sitetrack.site" },
                                 { icon: "📱", label: "Phone / WhatsApp", value: "+91 98765 43210" },
-                                { icon: "🌐", label: "Website", value: "www.sitetrack.app" },
+                                { icon: "🌐", label: "Website", value: "www.sitetrack.site" },
                             ].map((contact) => (
                                 <div key={contact.label} className="flex items-center gap-4">
                                     <span className="text-2xl">{contact.icon}</span>
@@ -925,7 +922,7 @@ function LandingFooter() {
 
                 <div className="border-t pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <p className="text-sm text-muted-foreground">
-                        © 2025 SiteTrack · Construction Intelligence Platform. All rights reserved.
+                        © 2026 SiteTrack · Construction Intelligence Platform. All rights reserved.
                     </p>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <span>🇮🇳 Made in India</span>
