@@ -82,12 +82,21 @@ export default function RegisterPage() {
         password: form.password,
       },
       {
-        onSuccess: () => {
-          toast({
-            title: "Welcome to SiteTrack! 🎉",
-            description: "Your 14-day free trial has started. Explore all features now.",
-          });
-          navigate("/dashboard");
+        onSuccess: (data: any) => {
+          if (data?.requiresPayment) {
+            toast({
+              title: "Account created",
+              description: data.message || "This company has already used a free trial. Please subscribe to continue.",
+              variant: "default",
+            });
+            navigate("/pricing");
+          } else {
+            toast({
+              title: "Welcome to SiteTrack! 🎉",
+              description: "Your 14-day free trial has started. Explore all features now.",
+            });
+            navigate("/dashboard");
+          }
         },
         onError: (err: Error) => {
           if (err.message.includes("already exists")) {

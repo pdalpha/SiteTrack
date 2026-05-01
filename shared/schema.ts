@@ -226,3 +226,30 @@ export const subscriptions = sqliteTable("subscriptions", {
 export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
 export type Subscription = typeof subscriptions.$inferSelect;
+
+// ─── Password Resets ───
+export const passwordResets = sqliteTable("password_resets", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  token: text("token").notNull().unique(),
+  expiresAt: text("expires_at").notNull(),
+  used: integer("used", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export const insertPasswordResetSchema = createInsertSchema(passwordResets).omit({ id: true, createdAt: true });
+export type InsertPasswordReset = z.infer<typeof insertPasswordResetSchema>;
+export type PasswordReset = typeof passwordResets.$inferSelect;
+
+// ─── Trial Registry (abuse prevention) ───
+export const trialRegistry = sqliteTable("trial_registry", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  email: text("email").notNull(),
+  companyNameNormalized: text("company_name_normalized").notNull(),
+  ipAddress: text("ip_address"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export const insertTrialRegistrySchema = createInsertSchema(trialRegistry).omit({ id: true, createdAt: true });
+export type InsertTrialRegistry = z.infer<typeof insertTrialRegistrySchema>;
+export type TrialRegistry = typeof trialRegistry.$inferSelect;

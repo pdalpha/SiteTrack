@@ -9,6 +9,8 @@ import {
   type Payroll, type InsertPayroll, payroll,
   type Advance, type InsertAdvance, advances,
   type Subscription, type InsertSubscription, subscriptions,
+  type PasswordReset, type InsertPasswordReset, passwordResets,
+  type TrialRegistry, type InsertTrialRegistry, trialRegistry,
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
@@ -92,6 +94,23 @@ async function migrate() {
     amount REAL NOT NULL,
     date TEXT NOT NULL,
     note TEXT,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS password_resets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,
+    used INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS trial_registry (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    company_name_normalized TEXT NOT NULL,
+    ip_address TEXT,
     created_at TEXT NOT NULL
   );
 `);
@@ -254,6 +273,15 @@ export interface IStorage {
   createSubscription(data: InsertSubscription): Promise<Subscription>;
   updateSubscription(id: number, data: Partial<InsertSubscription>): Promise<Subscription | undefined>;
   upsertUserSubscription(userId: number, data: Partial<InsertSubscription>): Promise<Subscription>;
+
+  // Password Resets
+  getPasswordResetByToken(token: string): Promise<PasswordReset | undefined>;
+  createPasswordReset(data: InsertPasswordReset): Promise<PasswordReset>;
+  markPasswordResetUsed(id: number): Promise<void>;
+
+  // Trial Registry
+  getTrialRegistryByCompanyName(companyNameNormalized: string): Promise<TrialRegistry | undefined>;
+  createTrialRegistry(data: InsertTrialRegistry): Promise<TrialRegistry>;
 
   // Dashboard
   getDashboardStats(siteId?: number, userId?: number): Promise<{
@@ -746,6 +774,29 @@ export class DatabaseStorage implements IStorage {
         ...data,
       } as InsertSubscription);
     }
+  }
+
+  // ─── Password Resets ───
+  async getPasswordResetByToken(token: string): Promise<PasswordReset | undefined> {
+    return db.select().from(passwordResets).where(eq(passwordResets.token, token)).then(res => res[0]);
+  }
+  async createPasswordReset(data: InsertPasswordReset): Promise<PasswordReset> {
+    return db.insert(passwordResets).values(data).returning().then(res => res[0]);
+  }
+  async markPasswordResetUsed(id: number): Promise<void> {
+    await db.update(passwordResets).set({ used: true }).where(eq(passwordResets.id, id));
+  }
+
+  // ─── Trial Registry ───
+  async getTrialRegistryByCompanyName(companyNameNormalized: string): Promise<TrialRegistry | undefined> {
+    return db.select().from(trialRegistry)
+      .where(eq(trialRegistry.companyNameNormalized, companyNameNormalized))
+      .orderBy(desc(trialRegistry.createdAt))
+      .limit(1)
+      .then(res => res[0]);
+  }
+  async createTrialRegistry(data: InsertTrialRegistry): Promise<TrialRegistry> {
+    return db.insert(trialRegistry).values(data).returning().then(res => res[0]);
   }
 }
 

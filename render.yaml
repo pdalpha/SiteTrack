@@ -42,6 +42,12 @@ services:
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
 
+      # ─── Email (Resend — free 3,000 emails/month) ─────────────────────────
+      # Sign up at https://resend.com, verify your domain, get an API key.
+      # Required for forgot-password emails and receipt notifications.
+      - key: RESEND_API_KEY
+        sync: false
+
       # ─── Uploads ──────────────────────────────────────────────────────────
       # Photos currently saved to local ./uploads (ephemeral on free tier).
       # To keep uploads across restarts, either enable Render persistent

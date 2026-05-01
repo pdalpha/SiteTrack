@@ -69,10 +69,13 @@ export default function LoginPage() {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
-                  <span className="text-xs text-muted-foreground">
-                    Forgot password? Contact{" "}
-                    <a href="mailto:support@sitetrack.site" className="text-primary hover:underline">support</a>
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/forgot-password")}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </button>
                 </div>
                 <div className="relative">
                   <Input
