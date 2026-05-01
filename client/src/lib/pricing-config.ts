@@ -32,6 +32,10 @@ export interface PricingPlan {
   monthlyPrice: number | null;
   /** Yearly price in INR (total for the year, already discounted). null = same as monthly × 12 */
   yearlyPrice: number | null;
+  /** Limited-time offer monthly price in INR. null = no offer */
+  offerMonthlyPrice: number | null;
+  /** Limited-time offer yearly price in INR. null = no offer */
+  offerYearlyPrice: number | null;
   /** Razorpay Plan IDs — fill in after creating plans in Razorpay dashboard */
   razorpayPlanId: {
     monthly: string | null;
@@ -69,6 +73,8 @@ export const PLANS: PricingPlan[] = [
     audience: "For contractors who want to evaluate SiteTrack before committing.",
     monthlyPrice: 0,
     yearlyPrice: 0,
+    offerMonthlyPrice: null, // Free plan — no offer needed
+    offerYearlyPrice: null,
     razorpayPlanId: { monthly: null, yearly: null }, // No charge — no plan ID needed
     stripePriceId: { monthly: null, yearly: null }, // Free plan — no Stripe price needed
     trialDays: 14,
@@ -105,7 +111,9 @@ export const PLANS: PricingPlan[] = [
     tagline: "For one active site",
     audience: "For small contractors running a single site who need clean digital records.",
     monthlyPrice: 999,
-    yearlyPrice: 9990, // ~2 months free
+    yearlyPrice: 9990,
+    offerMonthlyPrice: 799,   // Launch offer
+    offerYearlyPrice: 7990,   // Launch offer yearly
     razorpayPlanId: {
       monthly: "plan_Si6CdxpbdheQXm",
       yearly: "plan_Si6DWlad4vDlbr",
@@ -148,7 +156,9 @@ export const PLANS: PricingPlan[] = [
     tagline: "For growing teams and active sites",
     audience: "For contractors managing multiple sites, supervisors, and needing full reporting.",
     monthlyPrice: 2499,
-    yearlyPrice: 24990, // ~2 months free
+    yearlyPrice: 24990,
+    offerMonthlyPrice: 1799,  // Launch offer
+    offerYearlyPrice: 17990,  // Launch offer yearly
     razorpayPlanId: {
       monthly: "plan_Si6Dvf5X2lNf8v",
       yearly: "plan_Si6EUUuGdQSnH2",
@@ -191,7 +201,9 @@ export const PLANS: PricingPlan[] = [
     tagline: "For contractors running multiple sites",
     audience: "For established firms managing large teams, multiple projects, and complex reporting.",
     monthlyPrice: 4999,
-    yearlyPrice: 49990, // ~2 months free
+    yearlyPrice: 49990,
+    offerMonthlyPrice: 3499,  // Launch offer
+    offerYearlyPrice: 34990,  // Launch offer yearly
     razorpayPlanId: {
       monthly: null, // e.g. "plan_xxxxxxxxxxxxxxx"
       yearly: null,  // e.g. "plan_xxxxxxxxxxxxxxx"

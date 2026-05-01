@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +28,51 @@ import {
   PhoneCall,
   ArrowRight,
   Star,
+  Timer,
+  Tag,
 } from "lucide-react";
+
+// ─── Offer timer (cookie-based 24 h countdown) ────────────────────────────────
+const OFFER_COOKIE = "st_offer_start";
+const OFFER_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+function getOrSetOfferStart(): number {
+  const match = document.cookie.split("; ").find((c) => c.startsWith(OFFER_COOKIE + "="));
+  if (match) {
+    const ts = Number(match.split("=")[1]);
+    if (!isNaN(ts)) return ts;
+  }
+  const now = Date.now();
+  const expires = new Date(now + 7 * 24 * 60 * 60 * 1000).toUTCString();
+  document.cookie = `${OFFER_COOKIE}=${now}; expires=${expires}; path=/; SameSite=Lax`;
+  return now;
+}
+
+function useOfferCountdown() {
+  const [msLeft, setMsLeft] = useState<number>(() => {
+    const start = getOrSetOfferStart();
+    return Math.max(0, start + OFFER_DURATION_MS - Date.now());
+  });
+
+  useEffect(() => {
+    if (msLeft <= 0) return;
+    const tick = setInterval(() => {
+      const start = getOrSetOfferStart();
+      const remaining = Math.max(0, start + OFFER_DURATION_MS - Date.now());
+      setMsLeft(remaining);
+      if (remaining <= 0) clearInterval(tick);
+    }, 1000);
+    return () => clearInterval(tick);
+  }, []);
+
+  const isOfferActive = msLeft > 0;
+  const hours = Math.floor(msLeft / 3_600_000);
+  const minutes = Math.floor((msLeft % 3_600_000) / 60_000);
+  const seconds = Math.floor((msLeft % 60_000) / 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  return { isOfferActive, hours, minutes, seconds, pad };
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -39,10 +83,34 @@ function formatPrice(price: number | null, interval: BillingInterval): string {
   return `₹${monthly.toLocaleString("en-IN")}`;
 }
 
-function getYearlySaving(plan: PricingPlan): number | null {
-  if (!plan.monthlyPrice || !plan.yearlyPrice) return null;
-  const monthlyCost = plan.monthlyPrice * 12;
-  return monthlyCost - plan.yearlyPrice;
+function getYearlySaving(plan: PricingPlan, useOffer: boolean): number | null {
+  const monthly = useOffer ? plan.offerMonthlyPrice : plan.monthlyPrice;
+  const yearly  = useOffer ? plan.offerYearlyPrice  : plan.yearlyPrice;
+  if (!monthly || !yearly) return null;
+  return monthly * 12 - yearly;
+}
+
+// ─── Offer countdown banner ───────────────────────────────────────────────────
+function OfferBanner({ hours, minutes, seconds, pad }: {
+  hours: number; minutes: number; seconds: number; pad: (n: number) => string;
+}) {
+  return (
+    <div className="bg-gradient-to-r from-orange-500 to-rose-500 text-white py-3 px-4">
+      <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-3 text-sm font-medium">
+        <div className="flex items-center gap-2">
+          <Tag className="w-4 h-4 shrink-0" />
+          <span className="font-bold">🎉 Launch Offer — Up to 20% OFF on all paid plans!</span>
+        </div>
+        <div className="flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5">
+          <Timer className="w-4 h-4" />
+          <span>Ends in</span>
+          <span className="font-mono font-bold text-base tracking-widest">
+            {pad(hours)}:{pad(minutes)}:{pad(seconds)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 const PLAN_ICONS: Record<string, React.ReactNode> = {
@@ -171,18 +239,31 @@ function usePlanCTA(plan: PricingPlan, billingInterval: BillingInterval) {
   }};
 }
 
-// ─── Plan Card ────────────────────────────────────────────────────────────────
+// ─── Plan Card ───────────────────────────────────────────────────────────────
 function PlanCard({
   plan,
   billingInterval,
+  isOfferActive,
 }: {
   plan: PricingPlan;
   billingInterval: BillingInterval;
+  isOfferActive: boolean;
 }) {
   const { isLoading, handleCTA } = usePlanCTA(plan, billingInterval);
-  const saving = getYearlySaving(plan);
   const isYearly = billingInterval === "yearly";
-  const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
+
+  // Use offer prices when offer is active and plan has offer prices
+  const hasOffer = isOfferActive && plan.offerMonthlyPrice !== null;
+  const offerPrice  = isYearly ? plan.offerYearlyPrice  : plan.offerMonthlyPrice;
+  const origPrice   = isYearly ? plan.yearlyPrice        : plan.monthlyPrice;
+  const displayPrice = hasOffer ? offerPrice : origPrice;
+
+  const saving = getYearlySaving(plan, hasOffer);
+
+  // Percentage discount for badge
+  const discountPct = (hasOffer && origPrice && offerPrice)
+    ? Math.round(((origPrice - offerPrice) / origPrice) * 100)
+    : null;
 
   return (
     <div
@@ -197,6 +278,15 @@ function PlanCard({
         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
           <Badge className="bg-primary text-primary-foreground px-4 py-1 text-xs font-semibold tracking-wide rounded-full shadow-sm">
             Recommended for most teams
+          </Badge>
+        </div>
+      )}
+
+      {/* Offer badge top-right */}
+      {hasOffer && discountPct && (
+        <div className="absolute -top-3.5 right-4">
+          <Badge className="bg-orange-500 text-white px-3 py-1 text-xs font-bold rounded-full shadow-sm border-0">
+            {discountPct}% OFF
           </Badge>
         </div>
       )}
@@ -222,16 +312,43 @@ function PlanCard({
       <CardContent className="p-8 flex-1 flex flex-col">
         {/* Pricing */}
         <div className="mb-8">
-          <div className="flex items-baseline gap-1">
-            <span className="text-4xl font-bold tracking-tight">
-              {formatPrice(price, billingInterval)}
-            </span>
-            {price !== null && price !== 0 && (
-              <span className="text-muted-foreground font-medium">
-                /{isYearly ? "year" : "month"}
+          {/* Offer: crossed-out original + offer price */}
+          {hasOffer && origPrice ? (
+            <div className="space-y-0.5">
+              <div className="flex items-baseline gap-2">
+                <span className="text-lg line-through text-muted-foreground/60 font-medium">
+                  ₹{(isYearly ? Math.round(origPrice / 12) : origPrice).toLocaleString("en-IN")}
+                </span>
+                <span className="text-xs bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 font-bold px-1.5 py-0.5 rounded">
+                  WAS
+                </span>
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-4xl font-bold tracking-tight text-orange-600 dark:text-orange-400">
+                  ₹{(isYearly && offerPrice ? Math.round(offerPrice / 12) : (offerPrice ?? 0)).toLocaleString("en-IN")}
+                </span>
+                <span className="text-muted-foreground font-medium">
+                  /{isYearly ? "month" : "month"}
+                </span>
+              </div>
+              {isYearly && offerPrice && (
+                <p className="text-xs text-muted-foreground">
+                  ₹{offerPrice.toLocaleString("en-IN")} billed yearly
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-baseline gap-1">
+              <span className="text-4xl font-bold tracking-tight">
+                {formatPrice(displayPrice, billingInterval)}
               </span>
-            )}
-          </div>
+              {displayPrice !== null && displayPrice !== 0 && (
+                <span className="text-muted-foreground font-medium">
+                  /{isYearly ? "year" : "month"}
+                </span>
+              )}
+            </div>
+          )}
           <p className="text-xs text-muted-foreground mt-2 font-medium">
             {plan.audience}
           </p>
@@ -469,9 +586,14 @@ function FAQSection() {
 export default function PricingPage() {
   const [billingInterval, setBillingInterval] = useState<BillingInterval>("monthly");
   const { isAuthenticated } = useAuth();
+  const { isOfferActive, hours, minutes, seconds, pad } = useOfferCountdown();
 
   return (
     <div className="min-h-full pb-20">
+      {/* ── Launch offer banner ── */}
+      {isOfferActive && (
+        <OfferBanner hours={hours} minutes={minutes} seconds={seconds} pad={pad} />
+      )}
       {/* ── Hero ── */}
       <section className="px-4 pt-10 pb-8 text-center max-w-4xl mx-auto">
         <div className="inline-flex items-center gap-2 bg-primary/8 text-primary border border-primary/15 rounded-full px-4 py-1.5 text-xs font-medium mb-5">
@@ -524,13 +646,19 @@ export default function PricingPage() {
             </span>
           </div>
         )}
+        {isOfferActive && (
+          <div className="mt-3 text-xs text-orange-600 dark:text-orange-400 font-medium flex items-center justify-center gap-1.5">
+            <Tag className="w-3.5 h-3.5" />
+            Launch offer prices shown — {pad(hours)}:{pad(minutes)}:{pad(seconds)} remaining
+          </div>
+        )}
       </section>
 
       {/* ── Plan Cards ── */}
       <section className="px-4 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mt-2">
           {PLANS.map((plan) => (
-            <PlanCard key={plan.planCode} plan={plan} billingInterval={billingInterval} />
+            <PlanCard key={plan.planCode} plan={plan} billingInterval={billingInterval} isOfferActive={isOfferActive} />
           ))}
         </div>
 
