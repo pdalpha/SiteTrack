@@ -16,7 +16,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Upload, X, ImageIcon } from "lucide-react";
+import { Plus, Trash2, Upload, X, ImageIcon, Download } from "lucide-react";
+import { downloadCSV } from "@/lib/export-utils";
 import { useState, useRef } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
@@ -196,6 +197,18 @@ export default function ExpensesPage() {
         <div>
           <h1 className="text-xl font-semibold" data-testid="text-page-title">Expenses</h1>
           <p className="text-sm text-muted-foreground">Track site expenditures</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => downloadCSV(filtered.map(e => ({
+            Date: e.expenseDate,
+            Category: EXPENSE_CATEGORY_LABELS[e.category as keyof typeof EXPENSE_CATEGORY_LABELS] || e.category,
+            Amount: e.amount,
+            Vendor: e.vendorName ?? "",
+            PaymentMode: e.paymentMode,
+            Notes: e.notes ?? "",
+          })), `expenses_export_${month}.csv`)} disabled={!filtered.length}>
+            <Download className="w-4 h-4 mr-1" /> Export CSV
+          </Button>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>

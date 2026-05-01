@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Calendar, Users, Wrench, Package, AlertTriangle, MessageSquare, Save } from "lucide-react";
+import { FileText, Calendar, Users, Wrench, Package, AlertTriangle, MessageSquare, Save, Download, Share2, Printer } from "lucide-react";
+import { downloadCSV, shareOnWhatsApp, triggerPrint } from "@/lib/export-utils";
 import { useState, useEffect } from "react";
 
 export default function DprPage() {
@@ -134,6 +135,34 @@ export default function DprPage() {
         <div>
           <h1 className="text-xl font-semibold" data-testid="text-page-title">Daily Progress Report</h1>
           <p className="text-sm text-muted-foreground">One report per site per day</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={() => downloadCSV(history.map(d => ({
+            Date: d.date,
+            WorkDone: d.workDone,
+            Manpower: d.manpowerCount,
+            Contractor: d.contractorName ?? "",
+            Material: d.materialUsed ?? "",
+            Machinery: d.machineryUsed ?? "",
+            Delays: d.delayReason ?? "",
+            Remarks: d.remarks ?? "",
+          })), `dpr_history_${new Date().toISOString().slice(0,10)}.csv`)} disabled={!history.length}>
+            <Download className="w-4 h-4 mr-1" /> Export CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => {
+            const site = sites.find(s => s.id === selectedSiteId)?.name ?? "Site";
+            const dpr = currentDpr;
+            const text = `*SiteTrack DPR - ${site}*\n📅 Date: ${date}\n👷 Manpower: ${dpr?.manpowerCount ?? 0} workers\n✅ Work: ${dpr?.workDone ?? "No report yet"}\n${dpr?.materialUsed ? `🧱 Material: ${dpr.materialUsed}\n` : ""}${dpr?.machineryUsed ? `⚙️ Machinery: ${dpr.machineryUsed}\n` : ""}${dpr?.delayReason ? `⚠️ Issues: ${dpr.delayReason}\n` : ""}\n_View full report on https://sitetrack.site_`;
+            shareOnWhatsApp(text);
+          }} disabled={!currentDpr}>
+            <Share2 className="w-4 h-4 mr-1" /> Share
+          </Button>
+          <Button variant="outline" size="sm" onClick={triggerPrint}>
+            <Printer className="w-4 h-4 mr-1" /> Print
+          </Button>
+          <div className="text-sm text-muted-foreground">
+            {history.length} reports in last 30 days
+          </div>
         </div>
       </div>
 

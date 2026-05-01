@@ -15,7 +15,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Search, Users, UserX, Clock, CheckSquare, XSquare } from "lucide-react";
+import { Plus, Trash2, Search, Users, UserX, Clock, CheckSquare, XSquare, Download } from "lucide-react";
+import { downloadCSV } from "@/lib/export-utils";
 import { useState } from "react";
 
 const statusColors: Record<string, string> = {
@@ -146,7 +147,18 @@ export default function AttendancePage() {
           <h1 className="text-xl font-semibold" data-testid="text-page-title">Attendance</h1>
           <p className="text-sm text-muted-foreground">Track daily worker attendance</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => downloadCSV(records.map(r => ({
+            Date: r.date,
+            WorkerName: r.workerName,
+            ContractorName: r.contractorName ?? "",
+            Status: r.status,
+            CheckIn: r.checkIn ?? "",
+            CheckOut: r.checkOut ?? "",
+          })), `attendance_export_${date}.csv`)} disabled={!records.length}>
+            <Download className="w-4 h-4 mr-1" /> Export CSV
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-add-attendance">
               <Plus className="w-4 h-4 mr-1" /> Add Worker
@@ -236,6 +248,7 @@ export default function AttendancePage() {
             </div>
           </DialogContent>
         </Dialog>
+      </div>
       </div>
 
       {/* Filters */}

@@ -14,7 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Search, Pencil, ToggleLeft, ToggleRight, Users, IndianRupee, HardHat, TrendingUp } from "lucide-react";
+import { UserPlus, Search, Pencil, ToggleLeft, ToggleRight, Users, IndianRupee, HardHat, TrendingUp, Download } from "lucide-react";
+import { downloadCSV } from "@/lib/export-utils";
 import { useTranslation } from "react-i18next";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -178,9 +179,26 @@ export default function WorkersPage() {
           <h1 className="text-xl font-semibold" data-testid="text-page-title">{t("nav.workers")}</h1>
           <p className="text-sm text-muted-foreground">{workers.length} {t("workers.registered")}</p>
         </div>
-        <Button onClick={openAdd} data-testid="button-add-worker">
-          <UserPlus className="w-4 h-4 mr-1" /> {t("common.add")} {t("nav.workers")}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => downloadCSV(filtered.map(w => ({
+            Name: w.name,
+            Phone: w.phone ?? "",
+            Trade: w.trade ?? "",
+            Contractor: getContractorName(w.contractorId),
+            Site: getSiteName(w.siteId),
+            WageType: w.wageType,
+            DailyWage: w.dailyWage,
+            MonthlySalary: w.monthlySalary ?? "",
+            OvertimeRate: w.overtimeRate,
+            JoiningDate: w.joiningDate ?? "",
+            Status: w.status,
+          })), `workers_export_${new Date().toISOString().slice(0,10)}.csv`)} disabled={!filtered.length}>
+            <Download className="w-4 h-4 mr-1" /> Export CSV
+          </Button>
+          <Button onClick={openAdd} data-testid="button-add-worker">
+            <UserPlus className="w-4 h-4 mr-1" /> {t("common.add")} {t("nav.workers")}
+          </Button>
+        </div>
       </div>
 
       {/* KPI cards */}
