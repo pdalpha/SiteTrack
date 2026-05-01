@@ -15,6 +15,7 @@ import { useEffect } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useMutation } from "@tanstack/react-query";
 import { TrialBanner } from "@/components/trial-banner";
+import { WhatsAppButton } from "@/components/whatsapp-button";
 import Dashboard from "@/pages/dashboard";
 import SitesPage from "@/pages/sites";
 import AttendancePage from "@/pages/attendance";
@@ -204,6 +205,7 @@ function App() {
       <ThemeProvider>
         <TooltipProvider>
           <AppLayout />
+          <WhatsAppButton />
           <Toaster />
         </TooltipProvider>
       </ThemeProvider>

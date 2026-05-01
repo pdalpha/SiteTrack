@@ -62,9 +62,9 @@ export default function RefundPolicyPage() {
                             </p>
                             <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                                 <p className="font-medium">Refund Requests</p>
-                                <p className="text-muted-foreground">Email: refunds@sitetrack.app</p>
-                                <p className="text-muted-foreground">Phone: +91 98765 43210</p>
-                                <p className="text-muted-foreground">Hours: Monday-Saturday, 9 AM - 6 PM IST</p>
+                                <p className="text-muted-foreground">Email: <a href="mailto:refunds@sitetrack.site" className="text-primary hover:underline">refunds@sitetrack.site</a></p>
+                                <p className="text-muted-foreground">Hours: Monday – Saturday, 9 AM – 6 PM IST</p>
+                                <p className="text-muted-foreground text-sm">Typical response time: within one business day.</p>
                             </div>
                             <p className="text-muted-foreground">
                                 Please include your account email, invoice number, and reason for the refund request.
@@ -162,8 +162,8 @@ export default function RefundPolicyPage() {
                             </p>
                             <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                                 <p className="font-medium">SiteTrack Support</p>
-                                <p className="text-muted-foreground">Email: support@sitetrack.app</p>
-                                <p className="text-muted-foreground">Phone: +91 98765 43210</p>
+                                <p className="text-muted-foreground">Email: <a href="mailto:support@sitetrack.site" className="text-primary hover:underline">support@sitetrack.site</a></p>
+                                <p className="text-muted-foreground text-sm">We respond within 24–48 business hours.</p>
                             </div>
                         </section>
                     </CardContent>

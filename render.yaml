@@ -6,9 +6,47 @@ services:
     buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:
+      # ─── Core ─────────────────────────────────────────────────────────────
       - key: NODE_ENV
         value: production
       - key: SESSION_SECRET
         generateValue: true
+      - key: APP_URL
+        value: https://sitetrack.site
+
+      # ─── Database ─────────────────────────────────────────────────────────
+      # RECOMMENDED: use Turso (free 9 GB tier) so data survives restarts.
+      # 1. Sign up at https://turso.tech → create a DB
+      # 2. Set DATABASE_URL to "libsql://<db-name>-<org>.turso.io"
+      # 3. Set DATABASE_AUTH_TOKEN to the Turso auth token
+      # Without these, Render falls back to an ephemeral local file
+      # that is WIPED on every redeploy — DO NOT ship to paying users that way.
       - key: DATABASE_URL
-        value: data.db
+        sync: false   # set in Render dashboard → Environment
+      - key: DATABASE_AUTH_TOKEN
+        sync: false   # set in Render dashboard → Environment
+
+      # ─── Payments (Razorpay) ──────────────────────────────────────────────
+      # Create live plans in Razorpay dashboard, then paste IDs into
+      # client/src/lib/pricing-config.ts. Keys go here.
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+
+      # ─── Payments (Stripe — optional, international) ──────────────────────
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+
+      # ─── Uploads ──────────────────────────────────────────────────────────
+      # Photos currently saved to local ./uploads (ephemeral on free tier).
+      # To keep uploads across restarts, either enable Render persistent
+      # disk (paid) or swap to Cloudinary — see code in server/routes.ts.
+      - key: UPLOAD_DIR
+        value: uploads
+      - key: MAX_UPLOAD_SIZE_MB
+        value: "5"

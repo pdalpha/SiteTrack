@@ -124,8 +124,11 @@ export async function registerRoutes(
     }
   });
 
-  // ─── Seed data (public, dev only) ────────────────────────────────────────────
+  // ─── Seed data (DEV ONLY — blocked in production) ───────────────────────────
   app.post("/api/seed", async (_req, res) => {
+    if (process.env.NODE_ENV === "production") {
+      return res.status(404).json({ error: "Not found" });
+    }
     try {
       const existingSites = await storage.getSites(1);
       if (existingSites.length > 0) {

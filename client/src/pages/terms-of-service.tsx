@@ -158,7 +158,7 @@ export default function TermsOfServicePage() {
                         <section className="space-y-4">
                             <h2 className="text-2xl font-semibold">13. Governing Law</h2>
                             <p className="text-muted-foreground">
-                                These Terms shall be governed by and construed in accordance with the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts in India.
+                                These Terms shall be governed by and construed in accordance with the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts at Chhatrapati Sambhajinagar, Maharashtra, India.
                             </p>
                         </section>
 
@@ -169,8 +169,8 @@ export default function TermsOfServicePage() {
                             </p>
                             <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                                 <p className="font-medium">SiteTrack Support</p>
-                                <p className="text-muted-foreground">Email: legal@sitetrack.app</p>
-                                <p className="text-muted-foreground">Phone: +91 98765 43210</p>
+                                <p className="text-muted-foreground">Email: <a href="mailto:legal@sitetrack.site" className="text-primary hover:underline">legal@sitetrack.site</a></p>
+                                <p className="text-muted-foreground text-sm">We respond within 24–48 business hours.</p>
                             </div>
                         </section>
                     </CardContent>

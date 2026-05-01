@@ -57,7 +57,7 @@ export default function LoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@sitetrack.app"
+                  placeholder="you@sitetrack.site"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"

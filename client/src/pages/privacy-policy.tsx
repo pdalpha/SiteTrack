@@ -112,8 +112,8 @@ export default function PrivacyPolicyPage() {
                             </p>
                             <div className="bg-muted/50 rounded-lg p-4 space-y-2">
                                 <p className="font-medium">SiteTrack Support</p>
-                                <p className="text-muted-foreground">Email: privacy@sitetrack.app</p>
-                                <p className="text-muted-foreground">Phone: +91 98765 43210</p>
+                                <p className="text-muted-foreground">Email: <a href="mailto:privacy@sitetrack.site" className="text-primary hover:underline">privacy@sitetrack.site</a></p>
+                                <p className="text-muted-foreground text-sm">We respond within 24–48 business hours.</p>
                             </div>
                         </section>
                     </CardContent>
