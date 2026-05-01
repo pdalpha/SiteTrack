@@ -58,10 +58,13 @@ function LanguageSelector() {
   const { user } = useAuth();
 
   useEffect(() => {
+    // Sync i18n FROM user's saved preference on login / when it changes server-side.
+    // Do NOT depend on i18n itself — that caused a revert loop on toggle.
     if (user?.preferredLanguage && user.preferredLanguage !== i18n.language) {
       i18n.changeLanguage(user.preferredLanguage);
     }
-  }, [user?.preferredLanguage, i18n]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.preferredLanguage]);
 
   const updateLangMutation = useMutation({
     mutationFn: async (lang: string) => {
@@ -72,7 +75,11 @@ function LanguageSelector() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ preferredLanguage: lang }),
       });
-    }
+    },
+    onSuccess: () => {
+      // Refresh the cached user so user.preferredLanguage matches the new value.
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
   });
 
   const changeLanguage = (code: string) => {

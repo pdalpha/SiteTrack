@@ -116,6 +116,19 @@ try {
 } catch {
   // Column already exists — ignore
 }
+
+// Add company_id to users for multi-tenancy
+try {
+  await client.executeMultiple(`ALTER TABLE users ADD COLUMN company_id INTEGER`);
+} catch {
+  // Column already exists — ignore
+}
+// Backfill: every existing user becomes their own company (admin of themselves)
+try {
+  await client.executeMultiple(`UPDATE users SET company_id = id WHERE company_id IS NULL`);
+} catch {
+  // ignore
+}
 }
 migrate().catch(console.error);
 
@@ -125,7 +138,7 @@ export interface IStorage {
   // Users
   getUser(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
-  getUsers(): Promise<User[]>;
+  getUsers(companyId?: number): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, data: Partial<InsertUser>): Promise<User | undefined>;
 
@@ -211,11 +224,22 @@ export class DatabaseStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     return db.select().from(users).where(eq(users.email, email)).then(res => res[0]);
   }
-  async getUsers(): Promise<User[]> {
-    return db.select().from(users);
+  async getUsers(companyId?: number): Promise<User[]> {
+    if (companyId == null) return db.select().from(users);
+    return db.select().from(users).where(eq((users as any).companyId, companyId));
   }
   async createUser(user: InsertUser): Promise<User> {
-    return db.insert(users).values(user).returning().then(res => res[0]);
+    const created = await db.insert(users).values(user).returning().then(res => res[0]);
+    // If no companyId was provided (self-serve signup), default to own id (own company)
+    if (created.companyId == null) {
+      const updated = await db.update(users)
+        .set({ companyId: created.id })
+        .where(eq(users.id, created.id))
+        .returning()
+        .then(res => res[0]);
+      return updated;
+    }
+    return created;
   }
   async updateUser(id: number, data: Partial<InsertUser>): Promise<User | undefined> {
     return db.update(users).set(data).where(eq(users.id, id)).returning().then(res => res[0]);

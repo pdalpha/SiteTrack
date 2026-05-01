@@ -530,20 +530,34 @@ export async function registerRoutes(
   });
 
   // ─── Users ────────────────────────────────────────────────────────────────────
-  app.get("/api/users", requireAuth, async (_req, res) => {
-    const all = await storage.getUsers();
+  app.get("/api/users", requireAuth, async (req, res) => {
+    const me = req.user as any;
+    const companyId = me.companyId ?? me.id;
+    const all = await storage.getUsers(companyId);
     res.json(all.map(u => ({ ...u, password: undefined })));
   });
 
   app.get("/api/users/:id", requireAuth, async (req, res) => {
+    const me = req.user as any;
+    const companyId = me.companyId ?? me.id;
     const user = await storage.getUser(Number(req.params.id));
     if (!user) return res.status(404).json({ error: "User not found" });
+    // Tenancy guard — only allow viewing users in same company
+    if ((user.companyId ?? user.id) !== companyId) {
+      return res.status(404).json({ error: "User not found" });
+    }
     res.json({ ...user, password: undefined });
   });
 
   app.post("/api/users", requireAuth, async (req, res) => {
     try {
-      const data = insertUserSchema.parse(req.body);
+      const me = req.user as any;
+      const companyId = me.companyId ?? me.id;
+      // Force new user into inviter's company; only admins can invite
+      if (me.role !== "admin") {
+        return res.status(403).json({ error: "Only admins can create users" });
+      }
+      const data = insertUserSchema.parse({ ...req.body, companyId });
       const user = await storage.createUser(data);
       res.status(201).json({ ...user, password: undefined });
     } catch (e: any) {
@@ -553,8 +567,24 @@ export async function registerRoutes(
 
   app.put("/api/users/:id", requireAuth, async (req, res) => {
     try {
-      const { password, ...rest } = req.body;
-      const user = await storage.updateUser(Number(req.params.id), rest);
+      const me = req.user as any;
+      const targetId = Number(req.params.id);
+      const target = await storage.getUser(targetId);
+      if (!target) return res.status(404).json({ error: "User not found" });
+
+      const myCompanyId = me.companyId ?? me.id;
+      const targetCompanyId = target.companyId ?? target.id;
+      // Tenancy guard
+      if (targetCompanyId !== myCompanyId) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      // Allow editing self OR any user in same company if I'm admin
+      if (targetId !== me.id && me.role !== "admin") {
+        return res.status(403).json({ error: "You can only edit your own profile" });
+      }
+      // Strip fields that must not be changed via this route
+      const { password, companyId: _cid, id: _id, ...rest } = req.body;
+      const user = await storage.updateUser(targetId, rest);
       if (!user) return res.status(404).json({ error: "User not found" });
       res.json({ ...user, password: undefined });
     } catch (e: any) {

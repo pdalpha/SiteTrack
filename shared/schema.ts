@@ -11,6 +11,9 @@ export const users = sqliteTable("users", {
   password: text("password").notNull(),
   role: text("role", { enum: ["admin", "supervisor", "staff"] }).notNull().default("staff"),
   siteId: integer("site_id"),
+  /** Multi-tenancy boundary. For self-signup admins, companyId = their own user.id.
+   *  For invited users, companyId = inviter's companyId. Used to scope all data. */
+  companyId: integer("company_id"),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
   preferredLanguage: text("preferred_language", { length: 5 }).notNull().default("en"),
   createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
