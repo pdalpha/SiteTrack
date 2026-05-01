@@ -28,7 +28,7 @@ export const sites = sqliteTable("sites", {
   location: text("location"),
   startDate: text("start_date"),
   status: text("status", { enum: ["active", "completed", "paused"] }).notNull().default("active"),
-  createdBy: integer("created_by"),
+  createdBy: integer("created_by").notNull(),
   createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
 });
 
@@ -39,6 +39,7 @@ export type Site = typeof sites.$inferSelect;
 // ─── Contractors ───
 export const contractors = sqliteTable("contractors", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
   name: text("name").notNull(),
   companyName: text("company_name"),
   phone: text("phone"),

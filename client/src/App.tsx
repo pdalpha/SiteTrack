@@ -13,7 +13,6 @@ import { Sun, Moon, Globe } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { apiRequest } from "./lib/queryClient";
 import { useMutation } from "@tanstack/react-query";
 import { TrialBanner } from "@/components/trial-banner";
 import Dashboard from "@/pages/dashboard";
@@ -66,8 +65,10 @@ function LanguageSelector() {
   const updateLangMutation = useMutation({
     mutationFn: async (lang: string) => {
       if (!user) return;
-      await apiRequest(`/api/users/${user.id}`, {
+      await fetch(`./api/users/${user.id}`, {
         method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ preferredLanguage: lang }),
       });
     }

@@ -127,7 +127,7 @@ export async function registerRoutes(
   // ─── Seed data (public, dev only) ────────────────────────────────────────────
   app.post("/api/seed", async (_req, res) => {
     try {
-      const existingSites = await storage.getSites();
+      const existingSites = await storage.getSites(1);
       if (existingSites.length > 0) {
         return res.json({ message: "Data already seeded" });
       }
@@ -265,8 +265,9 @@ export async function registerRoutes(
   // ─── Dashboard ───────────────────────────────────────────────────────────────
   app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
     try {
+      const userId = (req.user as any).id as number;
       const siteId = req.query.site_id ? Number(req.query.site_id) : undefined;
-      const stats = await storage.getDashboardStats(siteId);
+      const stats = await storage.getDashboardStats(siteId, userId);
       res.json(stats);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -274,20 +275,23 @@ export async function registerRoutes(
   });
 
   // ─── Sites ───────────────────────────────────────────────────────────────────
-  app.get("/api/sites", requireAuth, async (_req, res) => {
-    const all = await storage.getSites();
+  app.get("/api/sites", requireAuth, async (req, res) => {
+    const userId = (req.user as any).id as number;
+    const all = await storage.getSites(userId);
     res.json(all);
   });
 
   app.get("/api/sites/:id", requireAuth, async (req, res) => {
+    const userId = (req.user as any).id as number;
     const site = await storage.getSite(Number(req.params.id));
-    if (!site) return res.status(404).json({ error: "Site not found" });
+    if (!site || site.createdBy !== userId) return res.status(404).json({ error: "Site not found" });
     res.json(site);
   });
 
   app.post("/api/sites", requireAuth, async (req, res) => {
     try {
-      const data = insertSiteSchema.parse(req.body);
+      const userId = (req.user as any).id as number;
+      const data = insertSiteSchema.parse({ ...req.body, createdBy: userId });
       const site = await storage.createSite(data);
       res.status(201).json(site);
     } catch (e: any) {
@@ -297,8 +301,10 @@ export async function registerRoutes(
 
   app.put("/api/sites/:id", requireAuth, async (req, res) => {
     try {
+      const userId = (req.user as any).id as number;
+      const existing = await storage.getSite(Number(req.params.id));
+      if (!existing || existing.createdBy !== userId) return res.status(404).json({ error: "Site not found" });
       const site = await storage.updateSite(Number(req.params.id), req.body);
-      if (!site) return res.status(404).json({ error: "Site not found" });
       res.json(site);
     } catch (e: any) {
       res.status(400).json({ error: e.message });
@@ -307,12 +313,14 @@ export async function registerRoutes(
 
   app.patch("/api/sites/:id/status", requireAuth, async (req, res) => {
     try {
+      const userId = (req.user as any).id as number;
+      const existing = await storage.getSite(Number(req.params.id));
+      if (!existing || existing.createdBy !== userId) return res.status(404).json({ error: "Site not found" });
       const { status } = req.body;
       if (!["active", "completed", "paused"].includes(status)) {
         return res.status(400).json({ error: "Invalid status" });
       }
       const site = await storage.updateSite(Number(req.params.id), { status });
-      if (!site) return res.status(404).json({ error: "Site not found" });
       res.json(site);
     } catch (e: any) {
       res.status(400).json({ error: e.message });
@@ -321,8 +329,9 @@ export async function registerRoutes(
 
   app.delete("/api/sites/:id", requireAuth, async (req, res) => {
     try {
+      const userId = (req.user as any).id as number;
       const existing = await storage.getSite(Number(req.params.id));
-      if (!existing) return res.status(404).json({ error: "Site not found" });
+      if (!existing || existing.createdBy !== userId) return res.status(404).json({ error: "Site not found" });
       await storage.deleteSite(Number(req.params.id));
       res.json({ success: true });
     } catch (e: any) {
@@ -727,8 +736,9 @@ export async function registerRoutes(
   // ─── Contractors ──────────────────────────────────────────────────────────────
   app.get("/api/contractors", requireAuth, async (req, res) => {
     try {
+      const userId = (req.user as any).id as number;
       const status = req.query.status ? String(req.query.status) : undefined;
-      const rows = await storage.getContractors(status);
+      const rows = await storage.getContractors(userId, status);
       res.json(rows);
     } catch (e: any) { res.status(500).json({ error: e.message }); }
   });
@@ -741,7 +751,8 @@ export async function registerRoutes(
 
   app.post("/api/contractors", requireAuth, async (req, res) => {
     try {
-      const data = insertContractorSchema.parse(req.body);
+      const userId = (req.user as any).id as number;
+      const data = insertContractorSchema.parse({ ...req.body, userId });
       const c = await storage.createContractor(data);
       res.status(201).json(c);
     } catch (e: any) { res.status(400).json({ error: e.message }); }

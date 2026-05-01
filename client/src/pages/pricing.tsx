@@ -438,7 +438,7 @@ function FAQSection() {
         <p className="text-sm text-muted-foreground mt-1">
           Have a question not listed here?{" "}
           <a
-            href="mailto:support@sitetrack.app"
+            href="mailto:support@sitetrack.site"
             className="text-primary underline-offset-4 hover:underline"
           >
             Email us
@@ -656,7 +656,7 @@ export default function PricingPage() {
               size="lg"
               variant="outline"
               onClick={() =>
-                window.open("mailto:sales@sitetrack.app?subject=SiteTrack Demo Request", "_blank")
+                window.open("mailto:sales@sitetrack.site?subject=SiteTrack Demo Request", "_blank")
               }
               data-testid="button-bottom-contact-sales"
             >
@@ -666,8 +666,8 @@ export default function PricingPage() {
           </div>
           <p className="text-xs text-muted-foreground mt-4">
             Questions? Email us at{" "}
-            <a href="mailto:support@sitetrack.app" className="underline underline-offset-4">
-              support@sitetrack.app
+            <a href="mailto:support@sitetrack.site" className="underline underline-offset-4">
+              support@sitetrack.site
             </a>
           </p>
         </div>
