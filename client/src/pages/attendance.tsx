@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Search, Users, UserX, Clock, CheckSquare, XSquare, Download } from "lucide-react";
+import { Plus, Trash2, Search, Users, UserX, Clock, CheckSquare, XSquare, Download, MapPin } from "lucide-react";
 import { downloadCSV } from "@/lib/export-utils";
 import { useState } from "react";
 
@@ -51,7 +51,10 @@ export default function AttendancePage() {
     status: "present" as "present" | "absent" | "half_day",
     checkIn: "08:00",
     checkOut: "17:00",
+    latitude: null as number | null,
+    longitude: null as number | null,
   });
+  const [geoLoading, setGeoLoading] = useState(false);
 
   const { data: siteWorkers = [] } = useWorkers(selectedSiteId, "active");
 
@@ -65,6 +68,17 @@ export default function AttendancePage() {
     enabled: !!selectedSiteId,
   });
 
+  const getGeoLocation = (): Promise<{ latitude: number; longitude: number } | null> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) { resolve(null); return; }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+        () => resolve(null),
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+      );
+    });
+  };
+
   const createMutation = useMutation({
     mutationFn: async (data: Partial<InsertAttendance>) => {
       const res = await apiRequest("api/attendance", { method: "POST", body: JSON.stringify(data) });
@@ -73,7 +87,7 @@ export default function AttendancePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
       setOpen(false);
-      setForm({ workerId: null, workerName: "", contractorName: "", status: "present", checkIn: "08:00", checkOut: "17:00" });
+      setForm({ workerId: null, workerName: "", contractorName: "", status: "present", checkIn: "08:00", checkOut: "17:00", latitude: null, longitude: null });
       toast({ title: "Attendance marked" });
     },
     onError: (e: Error) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -227,8 +241,11 @@ export default function AttendancePage() {
               </div>
               <Button
                 className="w-full"
-                disabled={!form.workerName || !selectedSiteId || createMutation.isPending}
-                onClick={() =>
+                disabled={!form.workerName || !selectedSiteId || createMutation.isPending || geoLoading}
+                onClick={async () => {
+                  setGeoLoading(true);
+                  const geo = await getGeoLocation();
+                  setGeoLoading(false);
                   createMutation.mutate({
                     siteId: selectedSiteId!,
                     workerId: form.workerId ?? null,
@@ -237,13 +254,15 @@ export default function AttendancePage() {
                     status: form.status,
                     checkIn: form.checkIn || null,
                     checkOut: form.checkOut || null,
+                    latitude: geo?.latitude ?? null,
+                    longitude: geo?.longitude ?? null,
                     date,
                     createdBy: user?.id ?? null,
-                  })
-                }
+                  });
+                }}
                 data-testid="button-submit-attendance"
               >
-                {createMutation.isPending ? "Saving..." : "Mark Attendance"}
+                {geoLoading ? "Getting location..." : createMutation.isPending ? "Saving..." : "Mark Attendance"}
               </Button>
             </div>
           </DialogContent>
@@ -361,10 +380,22 @@ export default function AttendancePage() {
                 <TableBody>
                   {filtered.map((r) => (
                     <TableRow key={r.id} data-testid={`row-attendance-${r.id}`}>
-                      <TableCell className="font-medium">{r.workerName}</TableCell>
+                      <TableCell className="font-medium">
+                        {r.workerName}
+                        {r.latitude && r.longitude && (
+                          <a
+                            href={`https://www.google.com/maps?q=${r.latitude},${r.longitude}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-0.5 ml-2 text-[10px] text-blue-600 hover:underline"
+                            title={`Lat: ${r.latitude.toFixed(4)}, Lng: ${r.longitude.toFixed(4)}`}
+                          >
+                            <MapPin className="w-3 h-3" /> Map
+                          </a>
+                        )}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{r.contractorName || "—"}</TableCell>
                       <TableCell>
-                        {/* Click badge to cycle status */}
                         <button
                           onClick={() => updateMutation.mutate({ id: r.id, data: { status: nextStatus[r.status] } })}
                           title="Click to cycle status"

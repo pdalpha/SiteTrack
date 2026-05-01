@@ -11,6 +11,8 @@ import {
   type Subscription, type InsertSubscription, subscriptions,
   type PasswordReset, type InsertPasswordReset, passwordResets,
   type TrialRegistry, type InsertTrialRegistry, trialRegistry,
+  type Material, type InsertMaterial, materials,
+  type Issue, type InsertIssue, issues,
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
@@ -198,6 +200,64 @@ for (const t of tenantTables) {
     console.error(`Backfill failed for ${t.name}:`, e);
   }
 }
+
+// ─── Attendance geo-tagging ───
+try {
+  await client.executeMultiple(`ALTER TABLE attendance ADD COLUMN latitude REAL`);
+} catch {}
+try {
+  await client.executeMultiple(`ALTER TABLE attendance ADD COLUMN longitude REAL`);
+} catch {}
+
+// ─── User WhatsApp notification settings ───
+try {
+  await client.executeMultiple(`ALTER TABLE users ADD COLUMN whatsapp_number TEXT`);
+} catch {}
+try {
+  await client.executeMultiple(`ALTER TABLE users ADD COLUMN auto_send_dpr INTEGER NOT NULL DEFAULT 0`);
+} catch {}
+
+// ─── Materials & Issues tables ───
+await client.executeMultiple(`
+  CREATE TABLE IF NOT EXISTS materials (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    company_id INTEGER,
+    site_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    unit TEXT NOT NULL DEFAULT 'bags',
+    quantity REAL NOT NULL DEFAULT 0,
+    threshold REAL NOT NULL DEFAULT 0,
+    supplier_name TEXT,
+    notes TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS issues (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    company_id INTEGER,
+    site_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    priority TEXT NOT NULL DEFAULT 'medium',
+    status TEXT NOT NULL DEFAULT 'open',
+    assigned_to TEXT,
+    photo_url TEXT,
+    resolved_at TEXT,
+    created_by INTEGER,
+    created_at TEXT NOT NULL
+  );
+`);
+
+// ─── Backfill new tables with company_id from sites ───
+try {
+  await client.executeMultiple(`UPDATE materials SET company_id = (SELECT s.company_id FROM sites s WHERE s.id = materials.site_id) WHERE company_id IS NULL`);
+} catch (e) {
+  console.error("Backfill failed for materials:", e);
+}
+try {
+  await client.executeMultiple(`UPDATE issues SET company_id = (SELECT s.company_id FROM sites s WHERE s.id = issues.site_id) WHERE company_id IS NULL`);
+} catch (e) {
+  console.error("Backfill failed for issues:", e);
+}
 }
 migrate().catch(console.error);
 
@@ -282,6 +342,20 @@ export interface IStorage {
   // Trial Registry
   getTrialRegistryByCompanyName(companyNameNormalized: string): Promise<TrialRegistry | undefined>;
   createTrialRegistry(data: InsertTrialRegistry): Promise<TrialRegistry>;
+
+  // Materials (Inventory)
+  getMaterials(companyId: number, siteId?: number): Promise<Material[]>;
+  getMaterial(id: number): Promise<Material | undefined>;
+  createMaterial(data: InsertMaterial): Promise<Material>;
+  updateMaterial(id: number, data: Partial<InsertMaterial>): Promise<Material | undefined>;
+  deleteMaterial(id: number): Promise<void>;
+
+  // Issues (Punch List)
+  getIssues(companyId: number, siteId?: number, status?: string): Promise<Issue[]>;
+  getIssue(id: number): Promise<Issue | undefined>;
+  createIssue(data: InsertIssue): Promise<Issue>;
+  updateIssue(id: number, data: Partial<InsertIssue>): Promise<Issue | undefined>;
+  deleteIssue(id: number): Promise<void>;
 
   // Dashboard
   getDashboardStats(siteId?: number, userId?: number): Promise<{
@@ -797,6 +871,45 @@ export class DatabaseStorage implements IStorage {
   }
   async createTrialRegistry(data: InsertTrialRegistry): Promise<TrialRegistry> {
     return db.insert(trialRegistry).values(data).returning().then(res => res[0]);
+  }
+
+  // ─── Materials (Inventory) ───
+  async getMaterials(companyId: number, siteId?: number): Promise<Material[]> {
+    const conditions: any[] = [eq(materials.companyId, companyId)];
+    if (siteId) conditions.push(eq(materials.siteId, siteId));
+    return db.select().from(materials).where(and(...conditions)).orderBy(desc(materials.createdAt));
+  }
+  async getMaterial(id: number): Promise<Material | undefined> {
+    return db.select().from(materials).where(eq(materials.id, id)).then(res => res[0]);
+  }
+  async createMaterial(data: InsertMaterial): Promise<Material> {
+    return db.insert(materials).values(data).returning().then(res => res[0]);
+  }
+  async updateMaterial(id: number, data: Partial<InsertMaterial>): Promise<Material | undefined> {
+    return db.update(materials).set(data as any).where(eq(materials.id, id)).returning().then(res => res[0]);
+  }
+  async deleteMaterial(id: number): Promise<void> {
+    await db.delete(materials).where(eq(materials.id, id));
+  }
+
+  // ─── Issues (Punch List) ───
+  async getIssues(companyId: number, siteId?: number, status?: string): Promise<Issue[]> {
+    const conditions: any[] = [eq(issues.companyId, companyId)];
+    if (siteId) conditions.push(eq(issues.siteId, siteId));
+    if (status) conditions.push(eq(issues.status, status));
+    return db.select().from(issues).where(and(...conditions)).orderBy(desc(issues.createdAt));
+  }
+  async getIssue(id: number): Promise<Issue | undefined> {
+    return db.select().from(issues).where(eq(issues.id, id)).then(res => res[0]);
+  }
+  async createIssue(data: InsertIssue): Promise<Issue> {
+    return db.insert(issues).values(data).returning().then(res => res[0]);
+  }
+  async updateIssue(id: number, data: Partial<InsertIssue>): Promise<Issue | undefined> {
+    return db.update(issues).set(data as any).where(eq(issues.id, id)).returning().then(res => res[0]);
+  }
+  async deleteIssue(id: number): Promise<void> {
+    await db.delete(issues).where(eq(issues.id, id));
   }
 }
 

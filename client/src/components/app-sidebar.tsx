@@ -12,6 +12,8 @@ import {
   CreditCard,
   Briefcase,
   Banknote,
+  PackageOpen,
+  AlertTriangle,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -36,8 +38,10 @@ const navItems = [
   { title: "nav.sites", url: "/sites", icon: Building2 },
   { title: "nav.workers", url: "/workers", icon: HardHat },
   { title: "nav.contractors", url: "/contractors", icon: Briefcase },
+  { title: "nav.materials", url: "/materials", icon: PackageOpen },
   { title: "nav.attendance", url: "/attendance", icon: ClipboardCheck },
   { title: "nav.dailyReport", url: "/dpr", icon: FileText },
+  { title: "nav.issues", url: "/issues", icon: AlertTriangle },
   { title: "nav.expenses", url: "/expenses", icon: Wallet },
   { title: "nav.payroll", url: "/payroll", icon: Banknote },
   { title: "nav.reports", url: "/reports", icon: BarChart2 },

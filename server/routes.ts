@@ -1122,5 +1122,100 @@ export async function registerRoutes(
     }
   });
 
+  // ─── Materials (Inventory) ─────────────────────────────────────────────────
+  app.get("/api/materials", requireAuth, async (req, res) => {
+    try {
+      const me = req.user as any;
+      const companyId = me.companyId ?? me.id;
+      const siteId = req.query.site_id ? Number(req.query.site_id) : undefined;
+      const data = await storage.getMaterials(companyId, siteId);
+      res.json(data);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.post("/api/materials", requireAuth, async (req, res) => {
+    try {
+      const me = req.user as any;
+      const companyId = me.companyId ?? me.id;
+      const data = { ...req.body, companyId };
+      const created = await storage.createMaterial(data);
+      res.status(201).json(created);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.put("/api/materials/:id", requireAuth, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const me = req.user as any;
+      const companyId = me.companyId ?? me.id;
+      const existing = await storage.getMaterial(id);
+      if (!existing || existing.companyId !== companyId) return res.status(403).json({ error: "Forbidden" });
+      const updated = await storage.updateMaterial(id, req.body);
+      res.json(updated);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.delete("/api/materials/:id", requireAuth, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const me = req.user as any;
+      const companyId = me.companyId ?? me.id;
+      const existing = await storage.getMaterial(id);
+      if (!existing || existing.companyId !== companyId) return res.status(403).json({ error: "Forbidden" });
+      await storage.deleteMaterial(id);
+      res.json({ success: true });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  // ─── Issues (Punch List) ──────────────────────────────────────────────────────
+  app.get("/api/issues", requireAuth, async (req, res) => {
+    try {
+      const me = req.user as any;
+      const companyId = me.companyId ?? me.id;
+      const siteId = req.query.site_id ? Number(req.query.site_id) : undefined;
+      const status = req.query.status as string | undefined;
+      const data = await storage.getIssues(companyId, siteId, status);
+      res.json(data);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.post("/api/issues", requireAuth, async (req, res) => {
+    try {
+      const me = req.user as any;
+      const companyId = me.companyId ?? me.id;
+      const data = { ...req.body, companyId, createdBy: me.id };
+      const created = await storage.createIssue(data);
+      res.status(201).json(created);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.put("/api/issues/:id", requireAuth, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const me = req.user as any;
+      const companyId = me.companyId ?? me.id;
+      const existing = await storage.getIssue(id);
+      if (!existing || existing.companyId !== companyId) return res.status(403).json({ error: "Forbidden" });
+      const updates = { ...req.body };
+      if (updates.status === "resolved" && !updates.resolvedAt) {
+        updates.resolvedAt = new Date().toISOString();
+      }
+      const updated = await storage.updateIssue(id, updates);
+      res.json(updated);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.delete("/api/issues/:id", requireAuth, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const me = req.user as any;
+      const companyId = me.companyId ?? me.id;
+      const existing = await storage.getIssue(id);
+      if (!existing || existing.companyId !== companyId) return res.status(403).json({ error: "Forbidden" });
+      await storage.deleteIssue(id);
+      res.json({ success: true });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+  });
+
   return httpServer;
 }

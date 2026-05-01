@@ -28,6 +28,8 @@ import PricingPage from "@/pages/pricing";
 import WorkersPage from "@/pages/workers";
 import ContractorsPage from "@/pages/contractors";
 import PayrollPage from "@/pages/payroll";
+import MaterialsPage from "@/pages/materials";
+import IssuesPage from "@/pages/issues";
 import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import ForgotPasswordPage from "@/pages/forgot-password";
@@ -153,6 +155,8 @@ function AppRouter() {
       <Route path="/workers" component={() => <ProtectedRoute component={WorkersPage} />} />
       <Route path="/contractors" component={() => <ProtectedRoute component={ContractorsPage} />} />
       <Route path="/payroll" component={() => <ProtectedRoute component={PayrollPage} />} />
+      <Route path="/materials" component={() => <ProtectedRoute component={MaterialsPage} />} />
+      <Route path="/issues" component={() => <ProtectedRoute component={IssuesPage} />} />
       <Route path="/subscription/success" component={() => <ProtectedRoute component={SubscriptionSuccess} />} />
 
       <Route component={NotFound} />

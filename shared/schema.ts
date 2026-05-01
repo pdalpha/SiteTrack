@@ -99,6 +99,8 @@ export const attendance = sqliteTable("attendance", {
   checkOut: text("check_out"),
   status: text("status", { enum: ["present", "absent", "half_day"] }).notNull().default("present"),
   date: text("date").notNull(),
+  latitude: real("latitude"),
+  longitude: real("longitude"),
   createdBy: integer("created_by"),
   createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
 });
@@ -253,3 +255,53 @@ export const trialRegistry = sqliteTable("trial_registry", {
 export const insertTrialRegistrySchema = createInsertSchema(trialRegistry).omit({ id: true, createdAt: true });
 export type InsertTrialRegistry = z.infer<typeof insertTrialRegistrySchema>;
 export type TrialRegistry = typeof trialRegistry.$inferSelect;
+
+// ─── Materials (Inventory) ───
+export const materials = sqliteTable("materials", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  companyId: integer("company_id"),
+  siteId: integer("site_id").notNull(),
+  name: text("name").notNull(),
+  unit: text("unit", { enum: ["bags", "kg", "ton", "cubic_m", "sq_m", "pieces", "litres", "rolls"] }).notNull().default("bags"),
+  quantity: real("quantity").notNull().default(0),
+  threshold: real("threshold").notNull().default(0),
+  supplierName: text("supplier_name"),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export const insertMaterialSchema = createInsertSchema(materials).omit({ id: true, createdAt: true });
+export type InsertMaterial = z.infer<typeof insertMaterialSchema>;
+export type Material = typeof materials.$inferSelect;
+
+export const MATERIAL_UNITS = ["bags", "kg", "ton", "cubic_m", "sq_m", "pieces", "litres", "rolls"] as const;
+export const MATERIAL_UNIT_LABELS: Record<string, string> = {
+  bags: "Bags",
+  kg: "KG",
+  ton: "Ton",
+  cubic_m: "Cubic m",
+  sq_m: "Sq. m",
+  pieces: "Pieces",
+  litres: "Litres",
+  rolls: "Rolls",
+};
+
+// ─── Issues (Punch List) ───
+export const issues = sqliteTable("issues", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  companyId: integer("company_id"),
+  siteId: integer("site_id").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  priority: text("priority", { enum: ["low", "medium", "high", "critical"] }).notNull().default("medium"),
+  status: text("status", { enum: ["open", "in_progress", "resolved"] }).notNull().default("open"),
+  assignedTo: text("assigned_to"),
+  photoUrl: text("photo_url"),
+  resolvedAt: text("resolved_at"),
+  createdBy: integer("created_by"),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+});
+
+export const insertIssueSchema = createInsertSchema(issues).omit({ id: true, createdAt: true });
+export type InsertIssue = z.infer<typeof insertIssueSchema>;
+export type Issue = typeof issues.$inferSelect;
